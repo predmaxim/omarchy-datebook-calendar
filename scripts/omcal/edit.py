@@ -61,6 +61,14 @@ def _object(e, eid):
     return e["calendar"].rstrip("/") + "/" + obj, rid or None
 
 
+def _restamp(a, e, href, etag):
+    """A CalDAV write gives the whole object a new ETag: every local event from
+    it (all occurrences of a series) takes it, or the next edit would conflict."""
+    if etag:
+        _apply(a["name"], lambda x: x["calendar"] == e["calendar"] and _object(x, x["uid"].rsplit("/", 1)[1])[0] == href,
+               {"etag": etag})
+
+
 def respond(uid, answer, series=False):
     """Accept, tentatively accept or decline an invitation, and tell the organiser.
 
@@ -80,7 +88,7 @@ def respond(uid, answer, series=False):
         _google_respond(tok, e["calendar"], target, ANSWERS[answer])
     elif a["provider"] == "caldav":
         href, rid = _object(e, eid)
-        caldav.respond(tok, href, e.get("etag"), rid, answer, series)
+        _restamp(a, e, href, caldav.respond(tok, href, e.get("etag"), rid, answer, series))
     else:
         auth.send_json("POST", GRAPH + "/me/calendars/%s/events/%s/%s" % (q(e["calendar"]), q(target), GRAPH_ACTIONS[answer]),
                        tok, {"sendResponse": True})
@@ -235,7 +243,7 @@ def delete(uid, series=False):
     guard = {} if series or not e.get("etag") else {"If-Match": e["etag"]}
     if a["provider"] == "caldav":
         href, rid = _object(e, eid)
-        caldav.delete(tok, href, e.get("etag"), None if series else rid)
+        new_etag = caldav.delete(tok, href, e.get("etag"), None if series else rid)
     elif a["provider"] == "google":
         auth.send_json("DELETE", GOOGLE + "/calendars/%s/events/%s?sendUpdates=all" % (q(e["calendar"]), q(target)),
                        tok, None, guard)
@@ -248,6 +256,8 @@ def delete(uid, series=False):
                         if not (u == uid or series and x.get("seriesId") == e["seriesId"])}
         sync.write_private(path, st)
         sync.republish()
+    if a["provider"] == "caldav" and not series:
+        _restamp(a, e, href, new_etag)
 
 
 def _add(account, event):
@@ -355,10 +365,11 @@ def _caldav_update(a, tok, e, eid, uid, series, title, location, busy, times):
         fields["busy"] = busy
     if times:
         fields["start"], fields["end"] = times[1], times[2]
-    caldav.update(tok, href, e.get("etag"), None if series else rid, fields, series)
+    etag = caldav.update(tok, href, e.get("etag"), None if series else rid, fields, series)
     local = {k: fields[k] for k in ("title", "location", "busy") if k in fields}
     if times:
         ad, s, en = times
         local.update(allDay=ad, start=s.isoformat() if ad else utc_iso(s), end=en.isoformat() if ad else utc_iso(en))
     match = (lambda x: x.get("seriesId") == e["seriesId"]) if series else (lambda x: x["uid"] == uid)
     _apply(a["name"], match, local)
+    _restamp(a, e, href, etag)
