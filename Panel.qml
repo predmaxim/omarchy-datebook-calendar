@@ -199,8 +199,9 @@ Panel {
   function openUrl(url) {
     // Only ever a link the sync vetted: https, and for joins a known host.
     if (!/^https:\/\//.test(String(url || ""))) return
-    urlProc.command = Model.openCommand(url)
-    urlProc.running = true
+    // Detached: a browser that starts here keeps running while its window is
+    // open, and a Process still running would hold the next link until then.
+    Quickshell.execDetached(Model.openCommand(url))
     // The link opens in its own window (a meeting, the event on the web):
     // the calendar gets out of its way, as it does for "Choose calendars".
     if (root.opened) root.close()
@@ -458,7 +459,6 @@ Panel {
     }
   }
 
-  Process { id: urlProc }
   Process { id: termProc }
 
   // Every three minutes, whether or not the panel is open: reminders and the
