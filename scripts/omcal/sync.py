@@ -3,7 +3,7 @@
     python3 -m omcal.sync [--full] [--quiet]
 
 Each account keeps its own state file, and each calendar in it its own cursor:
-a Graph deltaLink, or the time of the last Google fetch. A pass fetches only
+a Graph deltaLink, the time of the last Google fetch, or a CalDAV calendar's ctag. A pass fetches only
 what changed, and a full refresh runs when the window moves on to a new day,
 when a cursor has expired, or every six hours for Google. An account that
 fails (signed out, keyring locked, offline) keeps its last good events and
@@ -23,7 +23,7 @@ import time
 import urllib.error
 from datetime import datetime, timedelta, timezone
 
-from . import auth, files, google, graph
+from . import auth, caldav, files, google, graph
 from .model import sort_key
 
 APP = "blacksheep.calendar"
@@ -56,6 +56,8 @@ def sync_account(a, full, log):
     try:
         if a["provider"] == "google":
             tok, prov = auth.google_access(a), google
+        elif a["provider"] == "caldav":
+            tok, prov = auth.caldav_access(a), caldav
         else:
             tok, prov = auth.ms_access(a), graph
         # Hidden calendars are not fetched at all; their cached events go too,
@@ -77,7 +79,7 @@ def sync_account(a, full, log):
             whole = full or moved or not cursor or stale
             try:
                 events, removed, cursor = _fetch(a, prov, tok, cal, window, None if whole else cursor)
-            except (graph.DeltaExpired, auth.HttpError) as e:
+            except (graph.DeltaExpired, caldav.Changed, auth.HttpError) as e:
                 if whole or (isinstance(e, auth.HttpError) and e.code != 410):
                     raise
                 whole = True
@@ -109,6 +111,8 @@ def _fetch(a, prov, tok, cal, window, cursor):
     if prov is google:
         events, removed, at = google.fetch(a["name"], tok, cal, window, cursor)
         return events, removed, google.since(at)
+    if prov is caldav:
+        return caldav.fetch(a["name"], tok, cal, window, cursor)
     return graph.fetch(a["name"], tok, cal, window, cursor)
 
 

@@ -1,4 +1,4 @@
-"""Accounts, the keyring, and signing in to Google and Microsoft 365.
+"""Accounts, the keyring, and signing in to Google, Microsoft 365 and CalDAV servers.
 
 Secrets never touch disk here. Each account's refresh token (and, for Google,
 the OAuth client secret) is stored in the GNOME keyring through secret-tool,
@@ -305,3 +305,38 @@ def ms_access(a):
         s["refresh_token"] = t["refresh_token"]
         secret_store(a["name"], s)
     return t["access_token"]
+
+
+# ---------------------------------------------------------------- CalDAV
+
+def add_caldav(name, base, user, web=""):
+    """Sign in to a CalDAV server with an app password, typed without echo.
+
+    The password is checked by finding the calendar home before anything is
+    saved; the home is kept with the account so a sync needn't look it up.
+    """
+    import getpass
+    from . import caldav
+    check_name(name)
+    if not base.startswith("https://"):
+        die("the server address has to start with https://")
+    password = getpass.getpass("App password for %s: " % user)
+    if not password:
+        die("no password given")
+    tok = {"base": base.rstrip("/"), "user": user, "password": password, "email": user, "web": web}
+    try:
+        tok["home"] = caldav.discover(tok)
+        cals = caldav.calendars(tok)
+    except AuthError:
+        die("%s refused %s with that password (for Yandex: an app password for Calendar, "
+            "id.yandex.ru → Security → App passwords)" % (caldav.host(tok), user))
+    secret_store(name, {"password": password})
+    save_account({"name": name, "provider": "caldav", "base": tok["base"], "user": user,
+                  "email": user, "home": tok["home"], "web": web})
+    print("Added %s (%s): %d calendars." % (name, user, len(cals)))
+
+
+def caldav_access(a):
+    s = secret_load(a["name"])
+    return {"base": a["base"], "user": a["user"], "password": s["password"], "home": a["home"],
+            "email": a.get("email") or a["user"], "web": a.get("web", "")}
