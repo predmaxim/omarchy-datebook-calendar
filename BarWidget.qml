@@ -54,11 +54,14 @@ BarWidget {
       root.bar.shell.updateEntryInline(root.moduleName, entry)
   }
 
-  // Day and month names in the interface language. Russian day names are
-  // lower-case, so the label's first letter is capitalised.
+  // Day and month names in the interface language (see Model.namedFormat).
   function formatted(date) {
-    var text = date.toLocaleString(root.labelLocale,
-      activeFormat.replace(/ww/g, Model.isoWeekLiteral(date.getFullYear(), date.getMonth(), date.getDate())))
+    var loc = root.labelLocale
+    var format = Model.namedFormat(
+      activeFormat.replace(/ww/g, Model.isoWeekLiteral(date.getFullYear(), date.getMonth(), date.getDate())),
+      loc.dayName(date.getDay(), Locale.LongFormat), loc.dayName(date.getDay(), Locale.ShortFormat),
+      loc.monthName(date.getMonth(), Locale.ShortFormat))
+    var text = date.toLocaleString(loc, format)
     return text.charAt(0).toUpperCase() + text.slice(1)
   }
 
