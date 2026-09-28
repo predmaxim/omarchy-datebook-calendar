@@ -29,12 +29,33 @@ def replies(*bodies):
 
 class Requests(unittest.TestCase):
     def test_request_refuses_other_host(self):
-        with mock.patch.object(caldav.urllib.request, "urlopen") as net:
+        with mock.patch.object(caldav._OPENER, "open") as net:
             with self.assertRaises(auth.HttpError):
                 caldav.request(TOK, "GET", "https://evil.example/calendars/x.ics")
             with self.assertRaises(auth.HttpError):
                 caldav.request(dict(TOK, base="http://caldav.yandex.ru"), "GET", "/x")
             net.assert_not_called()
+
+    def test_redirect_is_refused_not_followed(self):
+        # urllib follows a GET's redirect with every header, Authorization
+        # included, to wherever it points: another host, or plain http.
+        import email.message
+        import io
+        import urllib.response
+        seen = []
+
+        def https_open(handler, req):
+            seen.append(req.full_url)
+            h = email.message.Message()
+            h["Location"] = "https://evil.example/steal"
+            resp = urllib.response.addinfourl(io.BytesIO(b""), h, req.full_url, code=302)
+            resp.msg = "Found"
+            return resp
+        with mock.patch.object(caldav.urllib.request.HTTPSHandler, "https_open", https_open):
+            with self.assertRaises(auth.HttpError) as cm:
+                caldav.request(TOK, "GET", "/calendars/me%40astral.ru/events-default/x.ics")
+        self.assertEqual(cm.exception.code, 302)
+        self.assertEqual(seen, ["https://caldav.yandex.ru/calendars/me%40astral.ru/events-default/x.ics"])
 
     def test_discover_follows_principal_to_home(self):
         fake = replies(PRINCIPAL, HOME_SET)
