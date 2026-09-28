@@ -7,14 +7,15 @@ local copy at once, so the widget shows it without waiting, and a sync then
 brings back the provider's own version.
 
 Writes that replace a field wholesale carry the provider's version stamp
-(Google's etag as If-Match), so a change made elsewhere since the event was
-read is never overwritten: the write fails with Conflict instead.
+(Google's etag as If-Match, CalDAV's object ETag), so a change made elsewhere
+since the event was read is never overwritten: the write fails with Conflict
+instead.
 """
 
 import os
 import urllib.parse
 
-from . import auth, sync
+from . import auth, caldav, sync
 
 GOOGLE = "https://www.googleapis.com/calendar/v3"
 GRAPH = "https://graph.microsoft.com/v1.0"
@@ -47,7 +48,17 @@ def locate(uid):
 
 
 def token(a):
-    return auth.google_access(a) if a["provider"] == "google" else auth.ms_access(a)
+    if a["provider"] == "google":
+        return auth.google_access(a)
+    if a["provider"] == "caldav":
+        return auth.caldav_access(a)
+    return auth.ms_access(a)
+
+
+def _object(e, eid):
+    """(object href, occurrence key or None) of a CalDAV event: eid is "<object>[#<key>]"."""
+    obj, _, rid = eid.partition("#")
+    return e["calendar"].rstrip("/") + "/" + obj, rid or None
 
 
 def respond(uid, answer, series=False):
@@ -67,6 +78,9 @@ def respond(uid, answer, series=False):
     tok = token(a)
     if a["provider"] == "google":
         _google_respond(tok, e["calendar"], target, ANSWERS[answer])
+    elif a["provider"] == "caldav":
+        href, rid = _object(e, eid)
+        caldav.respond(tok, href, e.get("etag"), rid, answer, series)
     else:
         auth.send_json("POST", GRAPH + "/me/calendars/%s/events/%s/%s" % (q(e["calendar"]), q(target), GRAPH_ACTIONS[answer]),
                        tok, {"sendResponse": True})
@@ -175,6 +189,11 @@ def create(ref, title, start, end=None, all_day=False, location="", invite=(), b
     if busy is None:
         busy = not all_day
     tok = token(a)
+    if a["provider"] == "caldav":
+        href, etag, ve = caldav.create(tok, cal, title, s, e, all_day, location, invite, busy)
+        new = caldav.normalise(a["name"], cal, tok, href, etag, ve)
+        _add(a["name"], new)
+        return new["uid"]
     if a["provider"] == "google":
         body = {"summary": title, "location": location,
                 "transparency": "opaque" if busy else "transparent",
@@ -214,7 +233,10 @@ def delete(uid, series=False):
     # Only this copy's own etag guards it; a series master has its own, which
     # the local copy doesn't hold, so a series delete goes unguarded.
     guard = {} if series or not e.get("etag") else {"If-Match": e["etag"]}
-    if a["provider"] == "google":
+    if a["provider"] == "caldav":
+        href, rid = _object(e, eid)
+        caldav.delete(tok, href, e.get("etag"), None if series else rid)
+    elif a["provider"] == "google":
         auth.send_json("DELETE", GOOGLE + "/calendars/%s/events/%s?sendUpdates=all" % (q(e["calendar"]), q(target)),
                        tok, None, guard)
     else:
@@ -279,6 +301,9 @@ def update(uid, title=None, start=None, end=None, all_day=None, location=None, s
     target = e["seriesId"] if series else eid
     guard = {} if series else {"If-Match": e["etag"]} if e.get("etag") else {}
     tok = token(a)
+    if a["provider"] == "caldav":
+        return _caldav_update(a, tok, e, eid, uid, series, title, location, busy,
+                              (ad, s, en) if timing else None)
     if a["provider"] == "google":
         body = {}
         if title is not None:
@@ -315,3 +340,25 @@ def update(uid, title=None, start=None, end=None, all_day=None, location=None, s
     else:
         new = (google if a["provider"] == "google" else graph).normalise(a["name"], cal, ev)
         _add(a["name"], new)
+
+
+def _caldav_update(a, tok, e, eid, uid, series, title, location, busy, times):
+    """update() for CalDAV: one object write, then the same change on the local copy."""
+    from .model import utc_iso
+    href, rid = _object(e, eid)
+    fields = {}
+    if title is not None:
+        fields["title"] = title.strip() or "(no title)"
+    if location is not None:
+        fields["location"] = location
+    if busy is not None:
+        fields["busy"] = busy
+    if times:
+        fields["start"], fields["end"] = times[1], times[2]
+    caldav.update(tok, href, e.get("etag"), None if series else rid, fields, series)
+    local = {k: fields[k] for k in ("title", "location", "busy") if k in fields}
+    if times:
+        ad, s, en = times
+        local.update(allDay=ad, start=s.isoformat() if ad else utc_iso(s), end=en.isoformat() if ad else utc_iso(en))
+    match = (lambda x: x.get("seriesId") == e["seriesId"]) if series else (lambda x: x["uid"] == uid)
+    _apply(a["name"], match, local)

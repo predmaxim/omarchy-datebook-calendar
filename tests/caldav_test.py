@@ -284,5 +284,65 @@ class Writes(unittest.TestCase):
         self.assertEqual(self.vevents(ONE)[0].get("SUMMARY").value, "x")
 
 
+class Edits(unittest.TestCase):
+    """edit.py finds the object and occurrence from the uid, calls the provider, patches the local copy."""
+
+    def setUp(self):
+        from omcal import edit
+        self.edit = edit
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        acc = {"name": "Y", "provider": "caldav", "email": TOK["email"]}
+        self.uid = "Y/%s/series.ics#20261006T070000Z" % CAL["id"]
+        self.other = "Y/%s/series.ics#20261007T070000Z" % CAL["id"]
+        ev = lambda uid: {"uid": uid, "account": "Y", "calendar": CAL["id"], "title": "Standup", "allDay": False,
+                          "start": "2026-10-06T07:00:00Z", "end": "2026-10-06T07:30:00Z", "status": "confirmed",
+                          "organizer": False, "response": "needsAction", "recurring": True,
+                          "seriesId": "series.ics", "editable": True, "etag": '"s1"', "location": "", "busy": True}
+        for p in (mock.patch.object(sync, "CACHE", self.dir.name),
+                  mock.patch.object(auth, "load_accounts", return_value=[acc]),
+                  mock.patch.object(auth, "caldav_access", return_value=TOK)):
+            p.start()
+            self.addCleanup(p.stop)
+        sync.write_private(os.path.join(self.dir.name, "state-Y.json"), {
+            "calendars": {CAL["id"]: CAL}, "events": {self.uid: ev(self.uid), self.other: ev(self.other)}})
+
+    def state(self):
+        return sync.read_json(os.path.join(self.dir.name, "state-Y.json"), {})["events"]
+
+    def test_delete_one_occurrence(self):
+        with mock.patch.object(caldav, "delete") as d:
+            self.edit.delete(self.uid)
+        d.assert_called_once_with(TOK, CAL["id"] + "series.ics", '"s1"', "20261006T070000Z")
+        self.assertEqual(list(self.state()), [self.other])
+
+    def test_delete_series(self):
+        with mock.patch.object(caldav, "delete") as d:
+            self.edit.delete(self.uid, series=True)
+        d.assert_called_once_with(TOK, CAL["id"] + "series.ics", '"s1"', None)
+        self.assertEqual(self.state(), {})
+
+    def test_update_series_title(self):
+        with mock.patch.object(caldav, "update") as u:
+            self.edit.update(self.uid, title="Team sync", series=True)
+        u.assert_called_once_with(TOK, CAL["id"] + "series.ics", '"s1"', None, {"title": "Team sync"}, True)
+        self.assertEqual({e["title"] for e in self.state().values()}, {"Team sync"})
+
+    def test_move_one_occurrence(self):
+        with mock.patch.object(caldav, "update") as u:
+            self.edit.update(self.uid, start="2026-10-06 12:00+03:00")
+        args = u.call_args[0]
+        self.assertEqual((args[3], sorted(args[4])), ("20261006T070000Z", ["end", "start"]))
+        self.assertEqual(self.state()[self.uid]["start"], "2026-10-06T09:00:00Z")
+        self.assertEqual(self.state()[self.uid]["end"], "2026-10-06T09:30:00Z")
+
+    def test_respond(self):
+        with mock.patch.object(caldav, "respond") as r:
+            self.edit.respond(self.uid, "decline")
+        r.assert_called_once_with(TOK, CAL["id"] + "series.ics", '"s1"', "20261006T070000Z", "decline", False)
+        self.assertEqual(self.state()[self.uid]["response"], "declined")
+        self.assertEqual(self.state()[self.other]["response"], "needsAction")
+
+
 if __name__ == "__main__":
     unittest.main()
