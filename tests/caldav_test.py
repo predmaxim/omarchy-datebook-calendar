@@ -4,11 +4,13 @@
 """
 import os
 import sys
+import tempfile
+import time
 import unittest
 from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
-from omcal import auth, caldav  # noqa: E402
+from omcal import auth, caldav, sync  # noqa: E402
 from caldav_fixtures import (ALLDAY, CAL, EXPANDED, HOME, HOME_SET, OUTLOOK_ZONE, PRINCIPAL,  # noqa: E402
                              SINGLE, TOK, report)
 
@@ -127,6 +129,28 @@ class Fetch(unittest.TestCase):
         with self.assertRaises(auth.HttpError) as cm:
             self.read(("/c/s.ics", '"e5"', SERIES))
         self.assertEqual(cm.exception.code, 501)
+
+
+class Sync(unittest.TestCase):
+    """A moved ctag makes the sync read the calendar whole and drop what's gone."""
+
+    def test_moved_ctag_replaces_the_calendars_events(self):
+        from caldav_fixtures import ALLDAY
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(sync, "CACHE", d), \
+                mock.patch.object(auth, "caldav_access", return_value=TOK), \
+                mock.patch.object(auth, "hidden_calendars", return_value={}), \
+                mock.patch.object(caldav, "calendars", return_value=[CAL]), \
+                mock.patch.object(caldav, "request", reported(("/c/a.ics", '"e3"', ALLDAY))):
+            stale = "Y/%s/gone.ics" % CAL["id"]
+            sync.write_private(os.path.join(d, "state-Y.json"), {
+                "windowDay": sync.window_now()[0],
+                "calendars": {CAL["id"]: dict(CAL, cursor="ctag-1", fullAt=time.time())},
+                "events": {stale: {"uid": stale, "calendar": CAL["id"], "status": "confirmed"}}})
+            st = sync.sync_account({"name": "Y", "provider": "caldav"}, False, lambda *_: None)
+        self.assertEqual(st["status"], "ok", st.get("error"))
+        self.assertEqual([e["title"] for e in st["events"].values()], ["Отпуск"])
+        self.assertEqual(st["calendars"][CAL["id"]]["cursor"], "ctag-2")
 
 
 if __name__ == "__main__":

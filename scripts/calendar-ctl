@@ -3,6 +3,8 @@
 
     calendar-ctl add-google <name> <client_secret.json>
     calendar-ctl add-microsoft <name> --tenant <tenant-id> --client-id <app-id>
+    calendar-ctl add-yandex <name> <email>              # asks for a Yandex app password
+    calendar-ctl add-caldav <name> <https://server> <user>
     calendar-ctl list
     calendar-ctl test <name>          # the next five events, to prove access
     calendar-ctl sync [--full]        # bring the local copy up to date
@@ -44,6 +46,13 @@ from omcal.auth import AuthError, HttpError  # noqa: E402
 
 def cmd_test(name):
     a = account(name)
+    if a["provider"] == "caldav":
+        from omcal import caldav, sync
+        tok = caldav_access(a)
+        for cal in caldav.calendars(tok):
+            events = caldav.fetch(a["name"], tok, cal, sync.window_now()[1])[0]
+            print("%-32s %4d events%s" % (cal["name"], len(events), "" if cal["editable"] else "  (read-only)"))
+        return
     now = datetime.now(timezone.utc)
     rows = []
     if a["provider"] == "google":
@@ -188,6 +197,11 @@ def main(argv):
         add_google(*args)
     elif cmd == "add-microsoft" and len(args) == 5 and args[1] == "--tenant" and args[3] == "--client-id":
         add_microsoft(args[0], args[2], args[4])
+    elif cmd == "add-yandex" and len(args) == 2:
+        from omcal import caldav
+        add_caldav(args[0], caldav.YANDEX, args[1], caldav.YANDEX_WEB)
+    elif cmd == "add-caldav" and len(args) == 3:
+        add_caldav(args[0], args[1], args[2])
     elif cmd == "list" and not args:
         for a in load_accounts():
             print("%-16s %-10s %s" % (a["name"], a["provider"], a.get("email", "")))
