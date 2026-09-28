@@ -107,8 +107,9 @@ eq(M.namedFormat("d MMMM 'W'ww yyyy", "Monday", "Mon", "Sep"), "d MMMM 'W'ww yyy
 eq(M.namedFormat("ddd d MMM", "Monday", "Mon", "Sep"), "'Mon' d 'Sep'", "namedFormat: English unchanged in effect")
 // Telemost meetings open in the Telemost web app; everything else in the browser.
 eq(M.openCommand("https://telemost.yandex.ru/j/12345678901234"),
-   ["omarchy-launch-webapp", "https://telemost.yandex.ru/j/12345678901234"], "openCommand: Telemost")
-eq(M.openCommand("https://telemost.360.yandex.ru/j/5566"), ["omarchy-launch-webapp", "https://telemost.360.yandex.ru/j/5566"], "openCommand: Telemost 360")
+   ["omarchy-launch-webapp", "https://telemost.yandex.ru/j/12345678901234?skip_app=1"], "openCommand: Telemost, without the desktop app prompt")
+eq(M.openCommand("https://telemost.360.yandex.ru/j/5566"), ["omarchy-launch-webapp", "https://telemost.360.yandex.ru/j/5566?skip_app=1"], "openCommand: Telemost 360")
+eq(M.openCommand("https://telemost.yandex.ru/j/5566?x=1"), ["omarchy-launch-webapp", "https://telemost.yandex.ru/j/5566?x=1&skip_app=1"], "openCommand: Telemost link with a query")
 eq(M.openCommand("https://calendar.yandex.ru/event?event_id=1"), ["xdg-open", "https://calendar.yandex.ru/event?event_id=1"], "openCommand: other links")
 eq(M.openCommand("https://telemost.yandex.ru.evil.example/j/1")[0], "xdg-open", "openCommand: lookalike host")
 
