@@ -331,10 +331,19 @@ def _exists(tok, href):
 
 
 def _put(tok, href, vcal, guard):
+    """Write the object; returns its new ETag.
+
+    Yandex answers a PUT without an ETag, so it is read back: without it the
+    next edit of this event would look like a change made elsewhere.
+    """
     headers = dict(guard)
     headers["Content-Type"] = "text/calendar; charset=utf-8"
     _, h, _ = request(tok, "PUT", href, ical.serialize(vcal), headers)
-    return (h.get("ETag") or "").strip()
+    etag = (h.get("ETag") or "").strip()
+    if not etag:
+        again = _exists(tok, href)
+        etag = again[1] if again else ""
+    return etag
 
 
 def _now():
@@ -467,7 +476,8 @@ def update(tok, href, etag, rid, fields, series=False):
 
 
 def delete(tok, href, etag, rid=None):
-    """The whole object (an event, or a series with its exceptions), or with rid one occurrence."""
+    """The whole object (an event, or a series with its exceptions), or with rid one
+    occurrence (then the object's new ETag is returned)."""
     if rid:
         def change(vcal):
             series = ical.master(vcal)
@@ -477,8 +487,7 @@ def delete(tok, href, etag, rid=None):
             vcal.children = [c for c in vcal.children if not (
                 c.name == "VEVENT" and c.get("RECURRENCE-ID") is not None
                 and ical.stamp(ical.instant(c.get("RECURRENCE-ID")))[0] == rid)]
-        _modify(tok, href, etag, change)
-        return
+        return _modify(tok, href, etag, change)
     for attempt in (1, 2):
         try:
             request(tok, "DELETE", href, None, {"If-Match": etag} if etag else {})

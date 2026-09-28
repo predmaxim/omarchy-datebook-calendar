@@ -184,6 +184,12 @@ class Writes(unittest.TestCase):
         self.assertEqual(ev.get("X-TELEMOST-CONFERENCE").value, "https://telemost.yandex.ru/j/12345678901234")
         self.assertEqual(self.srv.puts()[0][2]["If-Match"], '"e1"')
 
+    def test_put_without_etag_reads_the_new_one(self):
+        self.srv.etag_on_put = False
+        etag = caldav.update(TOK, ONE, '"e1"', None, {"title": "x"})
+        self.assertEqual(etag, self.srv.objects[ONE][1])
+        caldav.update(TOK, ONE, etag, None, {"title": "y"})   # the next edit isn't a conflict
+
     def test_stale_local_copy_is_a_conflict(self):
         with self.assertRaises(auth.Conflict):
             caldav.update(TOK, ONE, '"old"', None, {"title": "x"})
@@ -317,33 +323,44 @@ class Edits(unittest.TestCase):
         return sync.read_json(os.path.join(self.dir.name, "state-Y.json"), {})["events"]
 
     def test_delete_one_occurrence(self):
-        with mock.patch.object(caldav, "delete") as d:
+        with mock.patch.object(caldav, "delete", return_value='"s2"') as d:
             self.edit.delete(self.uid)
         d.assert_called_once_with(TOK, CAL["id"] + "series.ics", '"s1"', "20261006T070000Z")
         self.assertEqual(list(self.state()), [self.other])
 
     def test_delete_series(self):
-        with mock.patch.object(caldav, "delete") as d:
+        with mock.patch.object(caldav, "delete", return_value='"s2"') as d:
             self.edit.delete(self.uid, series=True)
         d.assert_called_once_with(TOK, CAL["id"] + "series.ics", '"s1"', None)
         self.assertEqual(self.state(), {})
 
     def test_update_series_title(self):
-        with mock.patch.object(caldav, "update") as u:
+        with mock.patch.object(caldav, "update", return_value='"s2"') as u:
             self.edit.update(self.uid, title="Team sync", series=True)
         u.assert_called_once_with(TOK, CAL["id"] + "series.ics", '"s1"', None, {"title": "Team sync"}, True)
         self.assertEqual({e["title"] for e in self.state().values()}, {"Team sync"})
 
     def test_move_one_occurrence(self):
-        with mock.patch.object(caldav, "update") as u:
+        with mock.patch.object(caldav, "update", return_value='"s2"') as u:
             self.edit.update(self.uid, start="2026-10-06 12:00+03:00")
         args = u.call_args[0]
         self.assertEqual((args[3], sorted(args[4])), ("20261006T070000Z", ["end", "start"]))
         self.assertEqual(self.state()[self.uid]["start"], "2026-10-06T09:00:00Z")
         self.assertEqual(self.state()[self.uid]["end"], "2026-10-06T09:30:00Z")
 
+    def test_write_stamps_the_new_etag_on_every_occurrence(self):
+        with mock.patch.object(caldav, "update", return_value='"s2"'):
+            self.edit.update(self.uid, title="Only this")
+        self.assertEqual({e["etag"] for e in self.state().values()}, {'"s2"'})
+        with mock.patch.object(caldav, "respond", return_value='"s3"'):
+            self.edit.respond(self.other, "accept")
+        self.assertEqual({e["etag"] for e in self.state().values()}, {'"s3"'})
+        with mock.patch.object(caldav, "delete", return_value='"s4"'):
+            self.edit.delete(self.uid)
+        self.assertEqual([e["etag"] for e in self.state().values()], ['"s4"'])
+
     def test_respond(self):
-        with mock.patch.object(caldav, "respond") as r:
+        with mock.patch.object(caldav, "respond", return_value='"s2"') as r:
             self.edit.respond(self.uid, "decline")
         r.assert_called_once_with(TOK, CAL["id"] + "series.ics", '"s1"', "20261006T070000Z", "decline", False)
         self.assertEqual(self.state()[self.uid]["response"], "declined")
