@@ -10,7 +10,7 @@ A normalised event:
     start, end   all-day: "YYYY-MM-DD", end exclusive (the day after the last)
                  timed:   ISO 8601 in UTC, "YYYY-MM-DDTHH:MM:SSZ"
     location     free text, or ""
-    join         {"url", "kind"} with kind teams | zoom | meet | webex | other,
+    join         {"url", "kind"} with kind teams | zoom | meet | webex | telemost | other,
                  or None
     response     accepted | tentative | declined | needsAction | organizer | none
     organizer    True when the account owns the event
@@ -38,6 +38,7 @@ JOIN_PATTERNS = [
     ("zoom", re.compile(r"https://(?:[\w-]+\.)?zoom\.us/(?:j|my|w|s)/[^\s\"'<>]+", re.I)),
     ("meet", re.compile(r"https://meet\.google\.com/[a-z]{3}-[a-z]{4}-[a-z]{3}(?:\?[^\s\"'<>]*)?", re.I)),
     ("webex", re.compile(r"https://[\w-]+\.webex\.com/[^\s\"'<>]+", re.I)),
+    ("telemost", re.compile(r"https://telemost\.(?:360\.)?yandex\.ru/j/[^\s\"'<>]+", re.I)),
 ]
 
 TAGS = re.compile(r"<[^>]+>")

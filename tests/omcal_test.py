@@ -29,6 +29,13 @@ class JoinLinks(unittest.TestCase):
         self.assertIsNone(find_join("https://evil.example/zoom.us/j/1"))
 
 
+    def test_telemost(self):
+        self.assertEqual(find_join("Встреча: https://telemost.yandex.ru/j/12345678901234")["kind"], "telemost")
+        self.assertEqual(find_join("https://telemost.360.yandex.ru/j/5566778899")["url"],
+                         "https://telemost.360.yandex.ru/j/5566778899")
+        self.assertIsNone(find_join("https://telemost.yandex.ru.evil.example/j/1"))
+
+
 class Instants(unittest.TestCase):
     def test_graph_seven_digit_fraction(self):
         self.assertEqual(utc_iso(parse_instant("2026-09-28T14:00:00.0000000", assume_utc=True)), "2026-09-28T14:00:00Z")
