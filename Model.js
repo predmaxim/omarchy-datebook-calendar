@@ -25,6 +25,13 @@ function namedFormat(format, dayLong, dayShort, monthShort) {
                .replace(/(^|[^M])MMM(?!M)/g, function (m, pre) { return pre + lit(monthShort.replace(/\.$/, "")) })
 }
 
+// How to open a link: a Telemost meeting joins in Omarchy's Telemost web app
+// (omarchy-launch-webapp), anything else goes to the default browser.
+function openCommand(url) {
+  var u = String(url)
+  return /^https:\/\/telemost\.(?:360\.)?yandex\.ru\//.test(u) ? ["omarchy-launch-webapp", u] : ["xdg-open", u]
+}
+
 // Weekday indices match both JS Date.getDay() and QML's Locale.Sunday…
 // Locale.Saturday, so a locale's firstDayOfWeek can be passed straight in.
 var WEEKDAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
