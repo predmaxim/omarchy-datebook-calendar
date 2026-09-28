@@ -113,6 +113,18 @@ add Microsoft Graph, delegated: `Calendars.ReadWrite`, `User.Read` and
 `offline_access`. Note the application (client) ID and the directory (tenant)
 ID. If the organisation requires admin consent, an admin has to grant it once.
 
+### Yandex Calendar and other CalDAV servers
+
+Yandex Calendar (personal or Yandex 360 for Business) is read and written over
+CalDAV with an app password, so there is no app to register:
+
+1. At id.yandex.ru → Security → App passwords, create one for **Calendar**.
+2. `$C add-yandex Yandex you@example.ru` and paste it when asked (it isn't echoed).
+
+Any other CalDAV server works the same way:
+`$C add-caldav Home https://dav.example.org/ you`. Recurring events are
+expanded by the server, and Telemost links get a Join button.
+
 ## Using it
 
 - **Click an event** to open it: edit it, delete it, answer it, open it in

@@ -3,11 +3,12 @@
     python3 -m omcal.sync [--full] [--quiet]
 
 Each account keeps its own state file, and each calendar in it its own cursor:
-a Graph deltaLink, the time of the last Google fetch, or a CalDAV calendar's ctag. A pass fetches only
-what changed, and a full refresh runs when the window moves on to a new day,
-when a cursor has expired, or every six hours for Google. An account that
-fails (signed out, keyring locked, offline) keeps its last good events and
-reports why, and never stops the other accounts syncing.
+a Graph deltaLink, the time of the last Google fetch, or a CalDAV calendar's
+ctag. A pass fetches only what changed, and a full refresh runs when the
+window moves on to a new day, when a cursor has expired, or every six hours
+for Google. An account that fails (signed out, keyring locked, offline) keeps
+its last good events and reports why, and never stops the other accounts
+syncing.
 
 Files, all 0600 in a 0700 directory under $XDG_CACHE_HOME/blacksheep.calendar:
     state-<account>.json   calendars, cursors and events for one account
