@@ -154,3 +154,146 @@ def calendars(tok):
         main = next((c for c in out if c["id"].rstrip("/").endswith("/events-default")), out[0])
         main["primary"] = True
     return out
+
+
+# ------------------------------------------------------------------ read
+
+REPORT = """<?xml version="1.0" encoding="utf-8"?>
+<c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+<d:prop><d:getetag/><c:calendar-data><c:expand start="%(start)s" end="%(end)s"/></c:calendar-data></d:prop>
+<c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VEVENT">
+<c:time-range start="%(start)s" end="%(end)s"/></c:comp-filter></c:comp-filter></c:filter>
+</c:calendar-query>"""
+
+PARTSTAT = {"ACCEPTED": "accepted", "TENTATIVE": "tentative", "DECLINED": "declined",
+            "NEEDS-ACTION": "needsAction"}
+
+
+def fetch(account, tok, cal, window, cursor=None):
+    """(events, removed, cursor) for one calendar; the cursor is its ctag.
+
+    With a cursor there is nothing to do if the ctag hasn't moved, and Changed
+    if it has (the sync then reads the calendar whole: removed is always empty,
+    since a whole read replaces the calendar's events). Without one, every
+    event in the window, recurring ones as their occurrences.
+    """
+    ctag = cal.get("ctag") or None
+    if cursor is not None:
+        if cursor == ctag:
+            return [], [], cursor
+        raise Changed()
+    start, end = (w.replace("-", "").replace(":", "") for w in window)
+    raw = request(tok, "REPORT", cal["id"], REPORT % {"start": start, "end": end},
+                  {"Depth": "1", "Content-Type": XML})[2]
+    events = []
+    for href, p in multistatus(raw):
+        data = _text(p.get(tag("c", "calendar-data")))
+        if not data:
+            continue
+        try:
+            vevents = ical.parse(data).find("VEVENT")
+        except ValueError:
+            continue
+        for ve in vevents:
+            if ve.get("RRULE") is not None:
+                raise auth.HttpError(host(tok), 501, "the server did not expand recurring events")
+            try:
+                events.append(normalise(account, cal, tok, href, _text(p.get(tag("d", "getetag"))), ve))
+            except (ValueError, TypeError, AttributeError):
+                continue   # an event this reader can't place is skipped; the rest still show
+    return events, [], ctag
+
+
+def _addr(p):
+    v = (p.value if p is not None else "").strip().lower()
+    return v[7:] if v.startswith("mailto:") else v
+
+
+def _end(ve, s):
+    """The end, of the same kind (date or time) as the start."""
+    if ve.get("DTEND") is not None:
+        e = ical.instant(ve.get("DTEND"))
+    elif ve.get("DURATION") is not None:
+        e = s + ical.duration(ve.get("DURATION").value)
+    else:
+        e = s
+    if isinstance(e, datetime) != isinstance(s, datetime):
+        e = s
+    return e
+
+
+def _join(ve):
+    """Yandex keeps a meeting's Telemost link in its own property; else look in the text."""
+    tm = ical.text(ve.get("X-TELEMOST-CONFERENCE")).strip()
+    if join_kind(tm) == "telemost":
+        return {"url": tm, "kind": "telemost"}
+    return find_join(ical.text(ve.get("URL")), ical.text(ve.get("LOCATION")), ical.text(ve.get("DESCRIPTION")))
+
+
+def _web_link(ve, web):
+    """The event's own page when the server put one on the web app's host in URL, else the web app."""
+    url = ical.text(ve.get("URL")).strip()
+    if web and url.startswith("https://") and \
+            urllib.parse.urlsplit(url).netloc == urllib.parse.urlsplit(web).netloc:
+        return url
+    return web
+
+
+def _remind(ve):
+    """Minutes before the start of each alarm set relative to the start."""
+    out = set()
+    for alarm in ve.find("VALARM"):
+        t = alarm.get("TRIGGER")
+        if t is None or t.params.get("VALUE", "DURATION").upper() != "DURATION" \
+                or t.params.get("RELATED", "START").upper() != "START":
+            continue
+        try:
+            before = -ical.duration(t.value)
+        except ValueError:
+            continue
+        if before >= timedelta(0):
+            out.add(int(before.total_seconds() // 60))
+    return sorted(out)
+
+
+def normalise(account, cal, tok, href, etag, ve):
+    """One VEVENT (a single event or one expanded occurrence) in the shape model.py describes."""
+    s = ical.instant(ve.get("DTSTART"))
+    all_day = not isinstance(s, datetime)
+    e = _end(ve, s)
+    if all_day:
+        start, end = s.isoformat(), max(e, s + timedelta(days=1)).isoformat()
+    else:
+        start, end = utc_iso(s), utc_iso(max(e, s))
+    me = tok.get("email", "").lower()
+    org, guests = ve.get("ORGANIZER"), ve.all("ATTENDEE")
+    organizer = _addr(org) == me if org is not None else not guests
+    mine = next((g for g in guests if _addr(g) == me), None)
+    if organizer:
+        response = "organizer"
+    elif mine is not None:
+        response = PARTSTAT.get(mine.params.get("PARTSTAT", "NEEDS-ACTION").upper(), "needsAction")
+    else:
+        response = "none"
+    rid = ve.get("RECURRENCE-ID")
+    obj = posixpath.basename(href.rstrip("/"))
+    eid = obj + ("#" + ical.stamp(ical.instant(rid))[0] if rid is not None else "")
+    status = ical.text(ve.get("STATUS")).strip().lower()
+    return {
+        "uid": "%s/%s/%s" % (account, cal["id"], eid),
+        "account": account, "calendar": cal["id"],
+        "title": ical.text(ve.get("SUMMARY")).strip() or "(no title)",
+        "allDay": all_day, "start": start, "end": end,
+        "location": ical.text(ve.get("LOCATION")),
+        "join": _join(ve),
+        "response": response,
+        "organizer": organizer,
+        "status": status if status in ("confirmed", "tentative", "cancelled") else "confirmed",
+        "busy": ical.text(ve.get("TRANSP")).strip().upper() != "TRANSPARENT",
+        "recurring": rid is not None,
+        "seriesId": obj if rid is not None else None,
+        "editable": bool(cal.get("editable")) and organizer,
+        "webLink": _web_link(ve, tok.get("web", "")),
+        "etag": etag,
+        "remind": _remind(ve),
+    }
