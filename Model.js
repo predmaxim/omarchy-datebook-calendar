@@ -3,6 +3,14 @@
 // (test/shell.d/clock-test.sh); the QML owns month/weekday naming through
 // Qt.locale().
 
+// Interface text goes through tr (I18n.translator, passed in by the QML);
+// without one it is English, filled in the same way.
+function english(text) {
+  var out = text
+  for (var i = 1; i < arguments.length; i++) out = out.split("%" + i).join(String(arguments[i]))
+  return out
+}
+
 var MS_PER_DAY = 86400000
 
 // Weekday indices match both JS Date.getDay() and QML's Locale.Sunday…
@@ -298,12 +306,13 @@ function clockLabel(date, use24h) {
 }
 
 // Every local day an event covers, with the label it shows on that day.
-function eventDays(e, use24h) {
+function eventDays(e, use24h, tr) {
+  tr = tr || english
   var out = []
   if (e.allDay) {
     var last = addDays(e.end > e.start ? e.end : addDays(e.start, 1), -1)
     for (var k = e.start; k <= last; k = addDays(k, 1))
-      out.push({ key: k, label: "All day", sort: "0" })
+      out.push({ key: k, label: tr("All day"), sort: "0", allDay: true })
     return out
   }
   var start = new Date(e.start), end = new Date(e.end)
@@ -313,19 +322,19 @@ function eventDays(e, use24h) {
   var lastKey = keyForDate(new Date(end.getTime() - 1))
   var firstKey = keyForDate(start)
   for (var d = firstKey; d <= lastKey; d = addDays(d, 1)) {
-    var label
+    var label, whole = false
     if (firstKey === lastKey) label = clockLabel(start, use24h) + " – " + clockLabel(end, use24h)
-    else if (d === firstKey) label = "from " + clockLabel(start, use24h)
-    else if (d === lastKey) label = "until " + clockLabel(end, use24h)
-    else label = "All day"
-    out.push({ key: d, label: label, sort: d === firstKey ? "1" + e.start : "0" })
+    else if (d === firstKey) label = tr("from %1", clockLabel(start, use24h))
+    else if (d === lastKey) label = tr("until %1", clockLabel(end, use24h))
+    else { label = tr("All day"); whole = true }
+    out.push({ key: d, label: label, sort: d === firstKey ? "1" + e.start : "0", allDay: whole })
   }
   return out
 }
 
 // {calendars, byDay, accounts} for the panel: hidden calendars dropped, each
 // event carrying its colour and calendar name, each day's list in order.
-function indexEvents(data, use24h) {
+function indexEvents(data, use24h, tr) {
   var calendars = {}, accounts = []
   var accountIndex = {}
   var list = (data && data.accounts) || []
@@ -358,7 +367,7 @@ function indexEvents(data, use24h) {
     var e = evs[j]
     var cinfo = calendars[e.account + "/" + e.calendar]
     if (!cinfo || !cinfo.shown || e.status === "cancelled") continue
-    var days = eventDays(e, use24h)
+    var days = eventDays(e, use24h, tr)
     for (var n = 0; n < days.length; n++) {
       var day = days[n]
       if (!byDay[day.key]) byDay[day.key] = []
@@ -367,7 +376,7 @@ function indexEvents(data, use24h) {
         color: cinfo.color, calendarName: cinfo.name, account: e.account,
         location: e.location || "", join: e.join || null, webLink: e.webLink || "",
         response: e.response, declined: e.response === "declined",
-        allDay: e.allDay || day.label === "All day", start: e.start, end: e.end,
+        allDay: e.allDay || !!day.allDay, start: e.start, end: e.end,
         organizer: !!e.organizer, recurring: !!e.recurring,
         calendar: e.calendar, editable: !!e.editable && !!cinfo.editable,
         busy: e.busy !== false
@@ -390,12 +399,13 @@ function dayColors(events, max) {
   return out
 }
 
-function dayTitle(key, todayKey) {
-  if (key === todayKey) return "Today"
-  if (key === addDays(todayKey, 1)) return "Tomorrow"
-  if (key === addDays(todayKey, -1)) return "Yesterday"
-  var p = key.split("-")
-  return Qt.formatDate(new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])), "dddd d MMMM")
+function dayTitle(key, todayKey, tr, locale) {
+  tr = tr || english
+  if (key === todayKey) return tr("Today")
+  if (key === addDays(todayKey, 1)) return tr("Tomorrow")
+  if (key === addDays(todayKey, -1)) return tr("Yesterday")
+  var p = key.split("-"), d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]))
+  return locale ? d.toLocaleDateString(locale, "dddd d MMMM") : Qt.formatDate(d, "dddd d MMMM")
 }
 
 
@@ -444,16 +454,17 @@ function stepAnchor(view, anchorKey, delta) {
 
 var MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-function shortDay(key) {
+function shortDay(key, tr) {
   var d = keyToDate(key)
-  return d.getDate() + " " + MONTHS_SHORT[d.getMonth()]
+  return d.getDate() + " " + (tr || english)(MONTHS_SHORT[d.getMonth()])
 }
 
-function rangeTitle(view, anchorKey, weekStart) {
+function rangeTitle(view, anchorKey, weekStart, tr) {
+  tr = tr || english
   var d = keyToDate(anchorKey)
   if (view === "day") {
     var names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-    return names[d.getDay()] + " " + shortDay(anchorKey) + " " + d.getFullYear()
+    return tr(names[d.getDay()]) + " " + shortDay(anchorKey, tr) + " " + d.getFullYear()
   }
   if (view === "week" || view === "workweek") {
     var days = viewDays(view, anchorKey, weekStart)
@@ -461,8 +472,8 @@ function rangeTitle(view, anchorKey, weekStart) {
     var a = keyToDate(days[0])
     for (var t = 0; t < days.length; t++)
       if (keyToDate(days[t]).getDay() === 4) { a = keyToDate(days[t]); break }
-    return "Week " + isoWeek(a.getFullYear(), a.getMonth(), a.getDate()) + " · "
-      + shortDay(days[0]) + " – " + shortDay(days[days.length - 1])
+    return tr("Week %1 · ", isoWeek(a.getFullYear(), a.getMonth(), a.getDate()))
+      + shortDay(days[0], tr) + " – " + shortDay(days[days.length - 1], tr)
   }
   if (view === "month") return ""
   return String(d.getFullYear())
@@ -590,23 +601,24 @@ function dueSnoozes(data, fired, nowMs) {
   return out
 }
 
-function reminderText(r, calName, use24h) {
+function reminderText(r, calName, use24h, tr) {
+  tr = tr || english
   var e = r.event
-  var when = e.allDay && r.minutes <= 0 ? "today"
-           : r.minutes > 1 ? "in " + r.minutes + " min"
-           : r.minutes >= -1 ? "starting now"
-           : "started " + (-r.minutes) + " min ago"
-  if (String(r.id).indexOf("snooze:") === 0) when = "snoozed · " + when
-  var time = e.allDay ? "All day" : clockLabel(new Date(e.start), use24h) + " – " + clockLabel(new Date(e.end), use24h)
-  var how = e.join ? " · click to join " + ({teams: "Teams", zoom: "Zoom", meet: "Meet", webex: "Webex", telemost: "Telemost"}[e.join.kind] || "the meeting")
-                   : (e.webLink ? " · click to open" : "")
+  var when = e.allDay && r.minutes <= 0 ? tr("today")
+           : r.minutes > 1 ? tr("in %1 min", r.minutes)
+           : r.minutes >= -1 ? tr("starting now")
+           : tr("started %1 min ago", -r.minutes)
+  if (String(r.id).indexOf("snooze:") === 0) when = tr("snoozed · %1", when)
+  var time = e.allDay ? tr("All day") : clockLabel(new Date(e.start), use24h) + " – " + clockLabel(new Date(e.end), use24h)
+  var how = e.join ? tr(" · click to join %1", ({teams: "Teams", zoom: "Zoom", meet: "Meet", webex: "Webex", telemost: "Telemost"}[e.join.kind] || tr("the meeting")))
+                   : (e.webLink ? tr(" · click to open") : "")
   return { headline: e.title, body: when + " · " + time + " · " + calName + how }
 }
 
 
 // ---- Next up: the meeting on now, or the next one within a week. All-day
 //      and declined events don't count; a meeting counts until it ends.
-function nextUp(byDay, now, use24h) {
+function nextUp(byDay, now, use24h, tr) {
   var nowMs = now.getTime()
   var key = keyForDate(now)
   for (var d = 0; d < 8; d++) {
@@ -619,25 +631,26 @@ function nextUp(byDay, now, use24h) {
       if (e <= nowMs) continue
       if (!best || s < best.s) best = { row: r, s: s, e: e }
     }
-    if (best) return { event: best.row, when: nextUpWhen(best.s, best.e, now, use24h), live: best.s <= nowMs,
+    if (best) return { event: best.row, when: nextUpWhen(best.s, best.e, now, use24h, tr), live: best.s <= nowMs,
                        soon: best.s > nowMs && best.s - nowMs <= 15 * 60000 }
   }
   return null
 }
 
-function nextUpWhen(s, e, now, use24h) {
+function nextUpWhen(s, e, now, use24h, tr) {
+  tr = tr || english
   var nowMs = now.getTime()
   var mins = Math.round((s - nowMs) / 60000)
   if (s <= nowMs) {
     var left = Math.max(1, Math.round((e - nowMs) / 60000))
-    return "Now · " + (left < 60 ? left + " min left" : "until " + clockLabel(new Date(e), use24h))
+    return left < 60 ? tr("Now · %1 min left", left) : tr("Now · until %1", clockLabel(new Date(e), use24h))
   }
-  if (mins < 60) return "In " + Math.max(1, mins) + " min"
+  if (mins < 60) return tr("In %1 min", Math.max(1, mins))
   var start = new Date(s), dk = keyForDate(start), today = keyForDate(now)
   var at = clockLabel(start, use24h)
-  if (dk === today) return (mins < 180 ? "In " + Math.floor(mins / 60) + " h " + (mins % 60) + " min · " : "Today · ") + at
-  if (dk === addDays(today, 1)) return "Tomorrow · " + at
-  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][start.getDay()] + " · " + at
+  if (dk === today) return mins < 180 ? tr("In %1 h %2 min · %3", Math.floor(mins / 60), mins % 60, at) : tr("Today · %1", at)
+  if (dk === addDays(today, 1)) return tr("Tomorrow · %1", at)
+  return tr(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][start.getDay()]) + " · " + at
 }
 
 // ---- The event editor. A draft is plain fields, as typed; draftArgs turns
@@ -701,33 +714,34 @@ function newDraft(dayKey, now, calendarRef) {
 }
 
 // { args: [...] } for calendar-ctl, or { error: "what to fix" }.
-function draftArgs(d) {
+function draftArgs(d, tr) {
+  tr = tr || english
   var date = parseDateText(d.date), endDate = parseDateText(d.endDate || d.date)
-  if (!date) return { error: "The start date should look like 2026-10-02." }
-  if (!endDate) return { error: "The end date should look like 2026-10-02." }
+  if (!date) return { error: tr("The start date should look like 2026-10-02.") }
+  if (!endDate) return { error: tr("The end date should look like 2026-10-02.") }
   var start, end
   if (d.allDay) {
-    if (endDate < date) return { error: "The last day can't be before the first." }
+    if (endDate < date) return { error: tr("The last day can't be before the first.") }
     start = date; end = addDays(endDate, 1)
   } else {
     var f = parseClock(d.from), t = parseClock(d.to)
-    if (f < 0) return { error: "The start time should look like 14:30 or 2:30pm." }
-    if (t < 0) return { error: "The end time should look like 15:30 or 3:30pm." }
+    if (f < 0) return { error: tr("The start time should look like 14:30 or 2:30pm.") }
+    if (t < 0) return { error: tr("The end time should look like 15:30 or 3:30pm.") }
     // An end at or before the start on the same day means it runs past midnight.
     if (endDate === date && t <= f) endDate = addDays(date, 1)
-    if (endDate < date) return { error: "The end can't be before the start." }
+    if (endDate < date) return { error: tr("The end can't be before the start.") }
     start = date + " " + clockInput(f); end = endDate + " " + clockInput(t)
   }
   var args
   if (d.mode === "create") {
-    if (!d.calendar) return { error: "Pick a calendar." }
+    if (!d.calendar) return { error: tr("Pick a calendar.") }
     args = ["create", d.calendar, "--title", d.title, "--start", start, "--end", end]
     if (d.allDay) args.push("--all-day")
     args.push(d.busy === false ? "--free" : "--busy")
     if (d.location) args.push("--location", d.location)
     var people = String(d.invite || "").split(/[\s,;]+/).filter(function(x) { return x })
     for (var i = 0; i < people.length; i++) {
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(people[i])) return { error: people[i] + " isn't an email address." }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(people[i])) return { error: tr("%1 isn't an email address.", people[i]) }
       args.push("--invite", people[i])
     }
     return { args: args }
@@ -740,7 +754,7 @@ function draftArgs(d) {
   var timesChanged = d.allDay !== o.allDay || d.date !== o.date || d.endDate !== o.endDate
                      || (!d.allDay && (d.from !== o.from || d.to !== o.to))
   if (timesChanged) {
-    if (d.series) return { error: "A whole series can't be moved from here: untick it to move this one." }
+    if (d.series) return { error: tr("A whole series can't be moved from here: untick it to move this one.") }
     args.push("--start", start, "--end", end, d.allDay ? "--all-day" : "--timed")
   }
   if (args.length === 2) return { args: [] }   // nothing changed
