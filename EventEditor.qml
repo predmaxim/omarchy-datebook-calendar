@@ -19,6 +19,8 @@ Item {
   property string error: ""
   property color foreground: Color.foreground
   property string fontFamily: Style.font.family
+  property var tr: Model.english                 // I18n.translator from the panel
+  property var labelLocale: Qt.locale("en_US")   // day and month names
 
   signal save(var draft)
   signal cancel()
@@ -123,13 +125,13 @@ Item {
     Keys.onPressed: function(event) { editor.fieldKey(event) }
 
     Caption {
-      text: editor.creating ? "NEW EVENT" : editor.editable ? "EDIT EVENT" : "INVITATION"
+      text: editor.creating ? editor.tr("NEW EVENT") : editor.editable ? editor.tr("EDIT EVENT") : editor.tr("INVITATION")
     }
 
     Field {
       id: titleField
       width: parent.width
-      placeholderText: "Title"
+      placeholderText: editor.tr("Title")
       font.pixelSize: Style.font.subtitle
     }
 
@@ -146,14 +148,14 @@ Item {
     }
     Caption {
       visible: !editor.creating && !!editor.event
-      text: editor.event ? (editor.event.calendarName + (editor.recurring ? "  ·  repeats" : "")) : ""
+      text: editor.event ? (editor.event.calendarName + (editor.recurring ? "  ·  " + editor.tr("repeats") : "")) : ""
       font.letterSpacing: 0
     }
 
     Toggle {
       visible: editor.editable
       width: parent.width
-      label: "All day"
+      label: editor.tr("All day")
       checked: editor.allDay
       foreground: editor.foreground
       fontFamily: editor.fontFamily
@@ -173,8 +175,8 @@ Item {
       Caption { anchors.verticalCenter: parent.verticalCenter; text: "SHOW AS"; width: Style.space(60) }
       ButtonGroup {
         options: [
-          { label: "Busy", value: "busy", tooltip: "Others see you as busy" },
-          { label: "Free", value: "free", tooltip: "Others see you as available" }
+          { label: editor.tr("Busy"), value: "busy", tooltip: editor.tr("Others see you as busy") },
+          { label: editor.tr("Free"), value: "free", tooltip: editor.tr("Others see you as available") }
         ]
         value: editor.busy ? "busy" : "free"
         focusable: false
@@ -209,22 +211,22 @@ Item {
       id: locationField
       visible: editor.editable || text !== ""
       width: parent.width
-      placeholderText: "Location"
+      placeholderText: editor.tr("Location")
     }
 
     Field {
       id: inviteField
       visible: editor.creating
       width: parent.width
-      placeholderText: "Invite: email addresses, separated by commas"
+      placeholderText: editor.tr("Invite: email addresses, separated by commas")
     }
 
     Toggle {
       visible: editor.recurring && (editor.editable || editor.invitation)
       width: parent.width
-      label: "Every occurrence"
-      description: editor.editable ? "Title, place and delete apply to the whole series; times move one at a time"
-                                   : "Answer for the whole series"
+      label: editor.tr("Every occurrence")
+      description: editor.editable ? editor.tr("Title, place and delete apply to the whole series; times move one at a time")
+                                   : editor.tr("Answer for the whole series")
       checked: editor.series
       foreground: editor.foreground
       fontFamily: editor.fontFamily
@@ -239,9 +241,9 @@ Item {
 
       Repeater {
         model: [
-          { answer: "accept", response: "accepted", label: "Accept", icon: "󰄬" },
-          { answer: "tentative", response: "tentative", label: "Maybe", icon: "󰋗" },
-          { answer: "decline", response: "declined", label: "Decline", icon: "󰅖" }
+          { answer: "accept", response: "accepted", label: editor.tr("Accept"), icon: "󰄬" },
+          { answer: "tentative", response: "tentative", label: editor.tr("Maybe"), icon: "󰋗" },
+          { answer: "decline", response: "declined", label: editor.tr("Decline"), icon: "󰅖" }
         ]
         Button {
           required property var modelData
@@ -250,7 +252,7 @@ Item {
           bordered: true
           iconText: current ? "󰄵" : modelData.icon
           text: modelData.label
-          tooltipText: current ? "Your answer now" : modelData.label + " and let the organiser know"
+          tooltipText: current ? editor.tr("Your answer now") : editor.tr("%1 and let the organiser know", modelData.label)
           foreground: current ? Color.accent : editor.foreground
           fontFamily: editor.fontFamily
           onClicked: editor.respond(modelData.answer, editor.series)
@@ -282,9 +284,9 @@ Item {
           enabled: !editor.saving
           bordered: editor.confirmingDelete
           iconText: "󰆴"
-          text: editor.confirmingDelete ? (editor.series ? "Delete the series?" : "Really delete?") : "Delete"
-          tooltipText: editor.invitation ? "Take it off your calendar (decline to tell the organiser)"
-                                         : "Delete it; guests get a cancellation"
+          text: editor.confirmingDelete ? (editor.series ? editor.tr("Delete the series?") : editor.tr("Really delete?")) : editor.tr("Delete")
+          tooltipText: editor.invitation ? editor.tr("Take it off your calendar (decline to tell the organiser)")
+                                         : editor.tr("Delete it; guests get a cancellation")
           foreground: editor.confirmingDelete ? Color.urgent : editor.foreground
           fontFamily: editor.fontFamily
           onClicked: {
@@ -296,8 +298,8 @@ Item {
         Button {
           visible: !!editor.event && /^https:\/\//.test(String(editor.event.webLink || ""))
           iconText: "󰏌"
-          text: "Open"
-          tooltipText: "Open in " + editor.providerName()
+          text: editor.tr("Open")
+          tooltipText: editor.tr("Open in %1", editor.tr(editor.providerName()))
           foreground: editor.foreground
           fontFamily: editor.fontFamily
           onClicked: editor.openLink(editor.event.webLink)
@@ -307,7 +309,7 @@ Item {
           visible: !!editor.event && !!editor.event.join
           bordered: true
           iconText: "󰕧"
-          text: "Join"
+          text: editor.tr("Join")
           foreground: editor.foreground
           fontFamily: editor.fontFamily
           onClicked: editor.openLink(editor.event.join.url)
@@ -320,7 +322,7 @@ Item {
         spacing: Style.space(6)
 
         Button {
-          text: editor.editable ? "Cancel" : "Close"
+          text: editor.editable ? editor.tr("Cancel") : editor.tr("Close")
           foreground: editor.foreground
           fontFamily: editor.fontFamily
           onClicked: editor.cancel()
@@ -331,7 +333,7 @@ Item {
           enabled: !editor.saving
           bordered: true
           iconText: editor.saving ? "󰑓" : "󰄬"
-          text: editor.saving ? "Saving…" : editor.creating ? "Create" : "Save"
+          text: editor.saving ? editor.tr("Saving…") : editor.creating ? editor.tr("Create") : editor.tr("Save")
           foreground: editor.foreground
           fontFamily: editor.fontFamily
           onClicked: editor.submit()

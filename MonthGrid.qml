@@ -19,6 +19,8 @@ Item {
   property bool use24h: false
   property color foreground: Color.foreground
   property string fontFamily: Style.font.family
+  property var tr: Model.english                 // I18n.translator from the panel
+  property var labelLocale: Qt.locale("en_US")   // day and month names
 
   signal pickDay(string key)
   signal openDay(string key)
@@ -49,7 +51,7 @@ Item {
         leftPadding: Style.space(8)
         verticalAlignment: Text.AlignVCenter
         textFormat: Text.PlainText
-        text: ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][modelData]
+        text: String(month.labelLocale.dayName(modelData, Locale.ShortFormat)).toUpperCase()
         color: Qt.darker(month.foreground, 1.6)
         font.family: month.fontFamily
         font.pixelSize: Style.font.caption
@@ -110,7 +112,7 @@ Item {
               anchors.centerIn: parent
               textFormat: Text.PlainText
               text: cell.modelData.day === 1
-                    ? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Model.keyToDate(cell.modelData.key).getMonth()] + " 1"
+                    ? month.tr("%1 1", month.tr(Model.MONTHS_SHORT[Model.keyToDate(cell.modelData.key).getMonth()]))
                     : cell.modelData.day
               color: cell.modelData.today ? Color.background
                    : !cell.modelData.inMonth ? Qt.darker(month.foreground, 2.2)
@@ -182,7 +184,7 @@ Item {
               visible: cell.overflow
               leftPadding: Style.space(4)
               textFormat: Text.PlainText
-              text: "+" + (cell.events.length - cell.shown) + " more"
+              text: month.tr("+%1 more", cell.events.length - cell.shown)
               color: Qt.darker(month.foreground, 1.5)
               font.family: month.fontFamily
               font.pixelSize: Style.font.caption

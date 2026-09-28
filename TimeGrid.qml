@@ -18,6 +18,8 @@ Item {
   property bool use24h: false
   property color foreground: Color.foreground
   property string fontFamily: Style.font.family
+  property var tr: Model.english                 // I18n.translator from the panel
+  property var labelLocale: Qt.locale("en_US")   // day and month names
 
   signal openEvent(var ev)
   signal joinEvent(string url)
@@ -72,7 +74,7 @@ Item {
           Text {
             anchors.horizontalCenter: parent.horizontalCenter
             textFormat: Text.PlainText
-            text: ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][head.date.getDay()]
+            text: String(grid.labelLocale.dayName(head.date.getDay(), Locale.ShortFormat)).toUpperCase()
             color: Qt.darker(grid.foreground, 1.5)
             font.family: grid.fontFamily
             font.pixelSize: Style.font.caption
@@ -156,7 +158,7 @@ Item {
           visible: allDayCol.items.length > 3
           leftPadding: Style.space(5)
           textFormat: Text.PlainText
-          text: "+" + (allDayCol.items.length - 2) + " more"
+          text: grid.tr("+%1 more", allDayCol.items.length - 2)
           color: Qt.darker(grid.foreground, 1.5)
           font.family: grid.fontFamily
           font.pixelSize: Style.font.caption

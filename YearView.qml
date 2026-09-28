@@ -19,6 +19,8 @@ Item {
   property real fitHeight: 0
   property color foreground: Color.foreground
   property string fontFamily: Style.font.family
+  property var tr: Model.english                 // I18n.translator from the panel
+  property var labelLocale: Qt.locale("en_US")   // day and month names
 
   signal pickDay(string key)
   signal openMonth(int month)
@@ -35,8 +37,7 @@ Item {
     : cellByWidth
   readonly property real cell: Math.max(Style.space(14), Math.floor(Math.min(cellByWidth, cellByHeight, Style.space(34))))
   readonly property var weekdays: Model.weekdayOrder(weekStart)
-  readonly property var monthNames: ["January", "February", "March", "April", "May", "June", "July", "August",
-                                     "September", "October", "November", "December"]
+  readonly property var monthNames: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(function (i) { return year.labelLocale.standaloneMonthName(i, Locale.LongFormat) })
   readonly property int thisMonth: Model.keyToDate(todayKey || Model.keyForDate(new Date())).getMonth()
   readonly property bool thisYear: Model.keyToDate(todayKey || Model.keyForDate(new Date())).getFullYear() === yearNumber
 
@@ -96,7 +97,7 @@ Item {
               horizontalAlignment: Text.AlignHCenter
               verticalAlignment: Text.AlignVCenter
               textFormat: Text.PlainText
-              text: ["S", "M", "T", "W", "T", "F", "S"][modelData]
+              text: year.labelLocale.dayName(modelData, Locale.NarrowFormat)
               color: Qt.darker(year.foreground, 1.9)
               font.family: year.fontFamily
               font.pixelSize: Style.font.caption

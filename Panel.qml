@@ -4,6 +4,7 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 import "Model.js" as Model
+import "I18n.js" as I18n
 
 // The clock's calendar popup: a month grid with ISO week numbers, built to
 // sit beside the weather panel — same hero-over-detail composition, same
@@ -65,10 +66,13 @@ Panel {
   // convention. Clicking the grid's "W" heading writes the choice back to
   // shell.json.
   readonly property int weekStart: Model.normalizedWeekStart(setting("weekStartDay", null), Qt.locale().firstDayOfWeek)
-  // The interface is English throughout, so day names are not taken from the
-  // system locale. Where the week starts still is: that is a regional
-  // convention rather than a translation, and it stays overridable above.
-  readonly property var labelLocale: Qt.locale("en_US")
+  // The interface language: the "language" setting, else the system's; any
+  // language without a table in I18n.js shows in English. Day and month names
+  // come from the same locale. Where the week starts is still the system's
+  // regional convention, overridable above.
+  readonly property string language: I18n.language(setting("language", ""), Qt.locale().name)
+  readonly property var tr: I18n.translator(language)
+  readonly property var labelLocale: Qt.locale(I18n.localeName(language))
   readonly property string nextWeekStartLabel: labelLocale.dayName(Model.toggledWeekStart(weekStart), Locale.LongFormat)
   readonly property var weekdays: Model.weekdayOrder(weekStart)
   readonly property var weeks: Model.monthGrid(viewYear, viewMonth, weekStart, todayKey)
@@ -93,7 +97,7 @@ Panel {
   readonly property string eventsPath: home + "/.cache/blacksheep.calendar/events.json"
   // Times follow the bar's own clock: a format with AP or ap is 12-hour.
   readonly property bool use24h: !/ap/i.test(String(setting("format", "HH:mm")))
-  property var eventIndex: Model.indexEvents(null, root.use24h)
+  property var eventIndex: Model.indexEvents(null, root.use24h, root.tr)
   property string selectedKey: root.todayKey
   readonly property var selectedEvents: root.eventIndex.byDay[root.selectedKey] || []
   readonly property var problemAccounts: root.eventIndex.accounts.filter(function(a) { return a.status !== "ok" })
@@ -102,11 +106,11 @@ Panel {
   // ---- Views. Month is the stock grid; day, week and working week are time
   //      grids; year is twelve small months. Remembered in shell.json.
   readonly property var viewOptions: [
-    { label: "Day", value: "day", tooltip: "One day (1)" },
-    { label: "Week", value: "week", tooltip: "Seven days (2)" },
-    { label: "Work week", value: "workweek", tooltip: "Monday to Friday (3)" },
-    { label: "Month", value: "month", tooltip: "The month grid (4)" },
-    { label: "Year", value: "year", tooltip: "Twelve months (5)" }
+    { label: root.tr("Day"), value: "day", tooltip: root.tr("One day (1)") },
+    { label: root.tr("Week"), value: "week", tooltip: root.tr("Seven days (2)") },
+    { label: root.tr("Work week"), value: "workweek", tooltip: root.tr("Monday to Friday (3)") },
+    { label: root.tr("Month"), value: "month", tooltip: root.tr("The month grid (4)") },
+    { label: root.tr("Year"), value: "year", tooltip: root.tr("Twelve months (5)") }
   ]
   property string viewMode: Model.VIEWS.indexOf(String(setting("view", "month"))) >= 0 ? String(setting("view", "month")) : "month"
   readonly property bool isTimeView: modern && (viewMode === "day" || viewMode === "week" || viewMode === "workweek")
@@ -183,7 +187,7 @@ Panel {
   function ingest(text) {
     try {
       root.eventData = JSON.parse(text)
-      root.eventIndex = Model.indexEvents(root.eventData, root.use24h)
+      root.eventIndex = Model.indexEvents(root.eventData, root.use24h, root.tr)
     } catch (e) {
       // A half-written file can't happen (the sync renames into place), so a
       // parse error means a damaged cache: keep what is on screen.
@@ -239,7 +243,7 @@ Panel {
         return
       }
       failProc.command = ["omarchy-notification-send", "-g", "󰃭", "-u", "normal", "--app-name", "Datebook",
-                          "Calendar: not saved", msg]
+                          root.tr("Calendar: not saved"), msg]
       failProc.running = true
     }
   }
@@ -304,7 +308,7 @@ Panel {
   }
 
   function saveDraft(d) {
-    var out = Model.draftArgs(d)
+    var out = Model.draftArgs(d, root.tr)
     if (out.error) { root.editorError = out.error; return }
     if (!out.args.length) { root.closeEditor(); return }
     if (d.mode === "create" && d.calendar !== setting("defaultCalendar", "")) persistSettings({ defaultCalendar: d.calendar })
@@ -405,16 +409,16 @@ Panel {
   function notify(r) {
     var e = r.event
     var cal = root.eventIndex.calendars[e.account + "/" + e.calendar] || {}
-    var text = Model.reminderText(r, cal.name || e.account, root.use24h)
+    var text = Model.reminderText(r, cal.name || e.account, root.use24h, root.tr)
     var url = e.join ? e.join.url : e.webLink
     var args = ["notify-send", "--app-name=Datebook", "--urgency=normal",
                 "--hint=string:omarchy-glyph:󰃭",
-                "--action=snooze=Snooze " + root.snoozeMinutes + " min"]
+                "--action=snooze=" + root.tr("Snooze %1 min", root.snoozeMinutes)]
     if (/^https:\/\//.test(String(url || "")))
       // The exec hint is what Omarchy runs on a click, and it survives into
       // the notification history; "default" is for other servers.
       args = args.concat(["--hint=string:omarchy-exec-argv:" + JSON.stringify(["xdg-open", String(url)]),
-                          "--action=default=" + (e.join ? "Join" : "Open")])
+                          "--action=default=" + root.tr(e.join ? "Join" : "Open")])
     args = args.concat(["--", text.headline, text.body])
     var p = Qt.createQmlObject('import Quickshell.Io; Process { stdout: StdioCollector { waitForEnd: true } }', root)
     p.stdout.streamFinished.connect(function() {
@@ -664,6 +668,8 @@ Panel {
       }
 
       ModernLayout {
+        tr: root.tr
+        labelLocale: root.labelLocale
         visible: root.modern
         anchors.fill: parent
         p: root
@@ -719,7 +725,7 @@ Panel {
                 id: heroDate
                 textFormat: Text.PlainText
                 anchors.verticalCenter: parent.verticalCenter
-                text: Qt.formatDate(root.today, "MMMM d")
+                text: root.today.toLocaleDateString(root.labelLocale, root.language === "en" ? "MMMM d" : "d MMMM")
                 color: heroMouse.containsMouse
                   ? Style.hoverStateColor(root.contentForeground, Color.accent)
                   : root.contentForeground
@@ -742,7 +748,7 @@ Panel {
 
               PanelToolTip {
                 visible: heroMouse.containsMouse
-                text: "Back to today"
+                text: root.tr("Back to today")
                 fontFamily: root.contentFontFamily
               }
             }
@@ -751,7 +757,7 @@ Panel {
               anchors.right: parent.right
               anchors.top: parent.top
               iconText: "󰊓"
-              tooltipText: "Expand: week, month and year views, and your calendars"
+              tooltipText: root.tr("Expand: week, month and year views, and your calendars")
               foreground: root.contentForeground
               fontFamily: root.contentFontFamily
               onClicked: root.setLayout(true)
@@ -796,7 +802,7 @@ Panel {
                   id: bornField
                   width: Style.space(70)
                   anchors.verticalCenter: parent.verticalCenter
-                  placeholderText: "year"
+                  placeholderText: root.tr("year")
                   foreground: root.contentForeground
                   font.family: root.contentFontFamily
                   inputMethodHints: Qt.ImhDigitsOnly
@@ -954,6 +960,8 @@ Panel {
 
           // ---- One event, over the views while it is open.
           EventEditor {
+            tr: root.tr
+            labelLocale: root.labelLocale
             visible: root.editorOpen
             width: Math.min(parent.width, Style.space(520))
             anchors.horizontalCenter: parent.horizontalCenter
@@ -994,6 +1002,8 @@ Panel {
 
           // ---- Day, week and working week.
           TimeGrid {
+            tr: root.tr
+            labelLocale: root.labelLocale
             visible: root.isTimeView && !root.editorOpen
             width: Math.min(parent.width, Style.space(root.viewMode === "day" ? 520 : 880))
             anchors.horizontalCenter: parent.horizontalCenter
@@ -1011,6 +1021,8 @@ Panel {
 
           // ---- The year.
           YearView {
+            tr: root.tr
+            labelLocale: root.labelLocale
             visible: false
             width: parent.width
             height: implicitHeight
@@ -1088,7 +1100,7 @@ Panel {
 
                   PanelToolTip {
                     visible: weekStartMouse.containsMouse
-                    text: "Start weeks on " + root.nextWeekStartLabel
+                    text: root.tr("Start weeks on %1", root.nextWeekStartLabel)
                     fontFamily: root.contentFontFamily
                   }
                 }
@@ -1252,8 +1264,8 @@ Panel {
                 width: Style.space(root.viewMode === "month" || !root.modern ? 130 : 320)
                 horizontalAlignment: Text.AlignHCenter
                 text: (root.viewMode === "month" || !root.modern
-                  ? Qt.formatDate(root.viewDate, "MMMM yyyy")
-                  : Model.rangeTitle(root.viewMode, root.selectedKey, root.weekStart)).toUpperCase()
+                  ? root.labelLocale.standaloneMonthName(root.viewDate.getMonth(), Locale.LongFormat) + " " + root.viewDate.getFullYear()
+                  : Model.rangeTitle(root.viewMode, root.selectedKey, root.weekStart, root.tr)).toUpperCase()
                 color: Qt.darker(root.contentForeground, 1.4)
                 font.family: root.contentFontFamily
                 font.pixelSize: Style.font.body
@@ -1267,7 +1279,7 @@ Panel {
                 anchors.leftMargin: -Style.space(8)
                 anchors.verticalCenter: parent.verticalCenter
                 iconText: "󰅁"
-                tooltipText: "Previous " + ({day: "day", week: "week", workweek: "week", month: "month", year: "year"}[root.viewMode])
+                tooltipText: root.tr("Previous " + ({day: "day", week: "week", workweek: "week", month: "month", year: "year"}[root.viewMode]))
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
                 onClicked: root.step(-1)
@@ -1278,7 +1290,7 @@ Panel {
                 anchors.rightMargin: -Style.space(8)
                 anchors.verticalCenter: parent.verticalCenter
                 iconText: "󰅂"
-                tooltipText: "Next " + ({day: "day", week: "week", workweek: "week", month: "month", year: "year"}[root.viewMode])
+                tooltipText: root.tr("Next " + ({day: "day", week: "week", workweek: "week", month: "month", year: "year"}[root.viewMode]))
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
                 onClicked: root.step(1)
@@ -1310,7 +1322,7 @@ Panel {
               Text {
                 visible: !root.isTimeView
                 textFormat: Text.PlainText
-                text: Model.dayTitle(root.selectedKey, root.todayKey).toUpperCase()
+                text: Model.dayTitle(root.selectedKey, root.todayKey, root.tr, root.labelLocale).toUpperCase()
                 color: Qt.darker(root.contentForeground, 1.4)
                 font.family: root.contentFontFamily
                 font.pixelSize: Style.font.bodySmall
@@ -1320,7 +1332,7 @@ Panel {
               Text {
                 visible: !root.isTimeView && root.selectedEvents.length === 0
                 textFormat: Text.PlainText
-                text: "Nothing on."
+                text: root.tr("Nothing on.")
                 color: Qt.darker(root.contentForeground, 1.9)
                 font.family: root.contentFontFamily
                 font.pixelSize: Style.font.body
@@ -1399,9 +1411,9 @@ Panel {
 
                       Repeater {
                         model: [
-                          { answer: "accept", label: "Accept", icon: "󰄬" },
-                          { answer: "tentative", label: "Maybe", icon: "󰋗" },
-                          { answer: "decline", label: "Decline", icon: "󰅖" }
+                          { answer: "accept", label: root.tr("Accept"), icon: "󰄬" },
+                          { answer: "tentative", label: root.tr("Maybe"), icon: "󰋗" },
+                          { answer: "decline", label: root.tr("Decline"), icon: "󰅖" }
                         ]
                         Button {
                           required property var modelData
@@ -1410,8 +1422,8 @@ Panel {
                           bordered: true
                           iconText: modelData.icon
                           text: root.writingUid === eventRow.modelData.uid ? "…" : modelData.label
-                          tooltipText: (eventRow.modelData.recurring ? "Every occurrence: " : "")
-                                       + modelData.label + " and let the organiser know"
+                          tooltipText: (eventRow.modelData.recurring ? root.tr("Every occurrence: ") : "")
+                                       + root.tr("%1 and let the organiser know", modelData.label)
                           foreground: root.contentForeground
                           fontFamily: root.contentFontFamily
                           onClicked: root.respond(eventRow.modelData, modelData.answer, eventRow.modelData.recurring)
@@ -1435,8 +1447,8 @@ Panel {
                     bordered: true
                     visible: root.canSnooze(eventRow.modelData, root.fired, root.clockNow)
                     iconText: "󰒲"
-                    text: "Snooze"
-                    tooltipText: "Remind me again in " + root.snoozeMinutes + " minutes"
+                    text: root.tr("Snooze")
+                    tooltipText: root.tr("Remind me again in %1 minutes", root.snoozeMinutes)
                     foreground: root.contentForeground
                     fontFamily: root.contentFontFamily
                     onClicked: root.snooze(eventRow.modelData)
@@ -1447,9 +1459,9 @@ Panel {
                     bordered: true
                     visible: !!eventRow.modelData.join
                     iconText: "󰕧"
-                    text: "Join"
+                    text: root.tr("Join")
                     tooltipText: eventRow.modelData.join
-                      ? "Join the " + ({teams: "Teams", zoom: "Zoom", meet: "Meet", webex: "Webex"}[eventRow.modelData.join.kind] || "online") + " meeting"
+                      ? root.tr("Join the %1 meeting", ({teams: "Teams", zoom: "Zoom", meet: "Meet", webex: "Webex"}[eventRow.modelData.join.kind] || root.tr("online")))
                       : ""
                     foreground: root.contentForeground
                     fontFamily: root.contentFontFamily
@@ -1469,8 +1481,8 @@ Panel {
                   wrapMode: Text.WordWrap
                   textFormat: Text.PlainText
                   text: modelData.name + ": " + (modelData.status === "signin"
-                    ? "sign-in needed (calendar-ctl add-" + (modelData.provider === "google" ? "google" : "microsoft") + " " + modelData.name + " …)"
-                    : modelData.status === "offline" ? "offline, showing the last copy" : "couldn't sync")
+                    ? root.tr("sign-in needed (calendar-ctl add-%1 %2 …)", (modelData.provider === "google" ? "google" : "microsoft"), modelData.name)
+                    : modelData.status === "offline" ? root.tr("offline, showing the last copy") : root.tr("couldn't sync"))
                   color: Color.urgent
                   font.family: root.contentFontFamily
                   font.pixelSize: Style.font.bodySmall
@@ -1483,8 +1495,8 @@ Panel {
 
                 Button {
                   iconText: "󰐕"
-                  text: "New"
-                  tooltipText: "New event on this day (n)"
+                  text: root.tr("New")
+                  tooltipText: root.tr("New event on this day (n)")
                   visible: root.editableCalendars.length > 0
                   foreground: root.contentForeground
                   fontFamily: root.contentFontFamily
@@ -1493,8 +1505,8 @@ Panel {
 
                 Button {
                   iconText: "󰃭"
-                  text: "Choose calendars"
-                  tooltipText: "Pick which calendars to show"
+                  text: root.tr("Choose calendars")
+                  tooltipText: root.tr("Pick which calendars to show")
                   foreground: root.contentForeground
                   fontFamily: root.contentFontFamily
                   onClicked: root.chooseCalendars()
@@ -1502,8 +1514,8 @@ Panel {
 
                 Button {
                   iconText: syncProc.running ? "󰑓" : "󰑐"
-                  text: syncProc.running ? "Syncing…" : "Sync"
-                  tooltipText: "Sync now"
+                  text: root.tr(syncProc.running ? "Syncing…" : "Sync")
+                  tooltipText: root.tr("Sync now")
                   foreground: root.contentForeground
                   fontFamily: root.contentFontFamily
                   onClicked: root.syncNow()
