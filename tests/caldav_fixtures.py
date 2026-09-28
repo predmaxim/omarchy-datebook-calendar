@@ -160,9 +160,10 @@ class FakeServer:
     after[(method, path)] = code acts, then raises (a write that landed).
     """
 
-    def __init__(self, objects=None):
+    def __init__(self, objects=None, etag_on_put=True):
         self.objects = dict(objects or {})
         self.calls, self.fail, self.after = [], {}, {}
+        self.etag_on_put = etag_on_put   # Yandex answers a PUT without an ETag
 
     def __call__(self, tok, method, path, body=None, headers=None):
         headers = headers or {}
@@ -189,7 +190,7 @@ class FakeServer:
                 raise auth.Conflict("changed")
             etag = '"v%d"' % len(self.calls)
             self.objects[path] = (body, etag)
-            return 201, {"ETag": etag}, b""
+            return 201, {"ETag": etag} if self.etag_on_put else {}, b""
         if method == "DELETE":
             if not have:
                 raise auth.HttpError("fake", 404)
