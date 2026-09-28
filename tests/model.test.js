@@ -4,7 +4,9 @@ const fs = require("fs")
 const path = require("path")
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8")
 const M = new Function(src + "; return { parseClock, parseDateText, eventDraft, newDraft, draftArgs," +
-  " nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders }")()
+  " nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english, rangeTitle, shortDay, indexEvents }")()
+const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "I18n.js"), "utf8").replace(/^\.pragma.*$/m, "")
+const I = new Function(i18nSrc + "; return { translator, language, localeName, TABLES }")()
 
 let failed = 0
 function eq(got, want, name) {
@@ -74,6 +76,29 @@ const back = M.dueSnoozes({ events: [se] }, { "snooze:a/c/1": t - 1 }, t)
 eq(back.length, 1, "snooze: due")
 eq(M.reminderText(back[0], "Work", false).body.indexOf("snoozed · "), 0, "snooze: labelled")
 eq(M.dueSnoozes({ events: [Object.assign({}, se, { end: iso(t - 1) })] }, { "snooze:a/c/1": t - 1 }, t).length, 0, "snooze: not after the end")
+
+// Languages.
+const ru = I.translator("ru"), en = I.translator("en")
+eq([I.language("ru", "en_US"), I.language("", "ru_RU"), I.language("de", "de_DE"), I.language("", "")],
+   ["ru", "ru", "en", "en"], "language: setting, then locale, else English")
+eq([I.localeName("ru"), I.localeName("en")], ["ru_RU", "en_US"], "localeName")
+eq([ru("Today"), ru("In %1 min", 5), ru("No such string"), en("In %1 min", 5)],
+   ["Сегодня", "Через 5 мин", "No such string", "In 5 min"], "tr: table, args, fallback")
+eq(Object.keys(I.TABLES.ru).filter(k => (k.match(/%\d/g) || []).sort().join() !== (I.TABLES.ru[k].match(/%\d/g) || []).sort().join()),
+   [], "tr: every translation keeps its placeholders")
+
+// Russian through tr; English unchanged without it.
+by[k] = [{ title: "soon", start: at(10, 0), end: at(10, 30) }]; delete by[M.addDays(k, 1)]
+eq(M.nextUp(by, now, true, ru).when, "Через 10 мин", "nextUp: ru")
+eq(M.rangeTitle("week", "2026-10-07", 1, ru), "Неделя 41 · 5 окт – 11 окт", "rangeTitle: ru week")
+eq(M.rangeTitle("week", "2026-10-07", 1), "Week 41 · 5 Oct – 11 Oct", "rangeTitle: English as before")
+eq(M.rangeTitle("day", "2026-10-07", 1, ru), "среда 7 окт 2026", "rangeTitle: ru day")
+eq(M.reminderText(back[0], "Работа", true, ru).body.indexOf("отложено · "), 0, "reminderText: ru")
+eq(M.draftArgs({ date: "x" }, ru).error, "Дата начала — в виде 2026-10-02.", "draftArgs: ru error")
+const allDayIdx = M.indexEvents({ calendars: [{ account: "a", id: "c", shown: true }],
+  events: [{ uid: "a/c/1", account: "a", calendar: "c", title: "T", allDay: true, start: "2026-10-05", end: "2026-10-06", status: "confirmed" }] }, true, ru)
+eq([allDayIdx.byDay["2026-10-05"][0].label, allDayIdx.byDay["2026-10-05"][0].allDay], ["Весь день", true], "indexEvents: ru all-day stays all-day")
+eq(M.english("+%1 more", 3), "+3 more", "english: fills args")
 
 if (failed) { console.log(failed + " failed"); process.exit(1) }
 console.log("all passed")

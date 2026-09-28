@@ -14,6 +14,8 @@ Item {
   property var byDay: ({})
   property color foreground: Color.foreground
   property string fontFamily: Style.font.family
+  property var tr: Model.english                 // I18n.translator from the panel
+  property var labelLocale: Qt.locale("en_US")   // day and month names
 
   signal pickDay(string key)
 
@@ -47,8 +49,7 @@ Item {
       anchors.leftMargin: Style.space(4)
       anchors.verticalCenter: parent.verticalCenter
       textFormat: Text.PlainText
-      text: ["January", "February", "March", "April", "May", "June", "July", "August",
-             "September", "October", "November", "December"][mini.month] + " " + mini.year
+      text: mini.labelLocale.standaloneMonthName(mini.month, Locale.LongFormat) + " " + mini.year
       color: mini.foreground
       font.family: mini.fontFamily
       font.pixelSize: Style.font.bodySmall
@@ -60,14 +61,14 @@ Item {
       anchors.verticalCenter: parent.verticalCenter
       PanelActionButton {
         iconText: "󰅁"
-        tooltipText: "Previous month"
+        tooltipText: mini.tr("Previous month")
         foreground: mini.foreground
         fontFamily: mini.fontFamily
         onClicked: mini.browse(-1)
       }
       PanelActionButton {
         iconText: "󰅂"
-        tooltipText: "Next month"
+        tooltipText: mini.tr("Next month")
         foreground: mini.foreground
         fontFamily: mini.fontFamily
         onClicked: mini.browse(1)
@@ -85,7 +86,7 @@ Item {
         width: mini.cell
         horizontalAlignment: Text.AlignHCenter
         textFormat: Text.PlainText
-        text: ["S", "M", "T", "W", "T", "F", "S"][modelData]
+        text: mini.labelLocale.dayName(modelData, Locale.NarrowFormat)
         color: Qt.darker(mini.foreground, 1.9)
         font.family: mini.fontFamily
         font.pixelSize: Style.font.caption

@@ -4,6 +4,7 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 import "Model.js" as Model
+import "I18n.js" as I18n
 
 // Date/time label for the bar, and the host for the calendar popup.
 //
@@ -28,6 +29,7 @@ BarWidget {
   // What the bar shows is what shell.json stores, so a cycled format is the
   // format from then on rather than something that reverts on restart.
   readonly property string activeFormat: configuredFormat
+  readonly property var labelLocale: Qt.locale(I18n.localeName(I18n.language(setting("language", ""), Qt.locale().name)))
   readonly property string displayText: formatted(displayDate)
   readonly property var verticalLines: displayText.split("\n")
 
@@ -52,8 +54,12 @@ BarWidget {
       root.bar.shell.updateEntryInline(root.moduleName, entry)
   }
 
+  // Day and month names in the interface language. Russian day names are
+  // lower-case, so the label's first letter is capitalised.
   function formatted(date) {
-    return Qt.formatDateTime(date, activeFormat.replace(/ww/g, Model.isoWeekLiteral(date.getFullYear(), date.getMonth(), date.getDate())))
+    var text = date.toLocaleString(root.labelLocale,
+      activeFormat.replace(/ww/g, Model.isoWeekLiteral(date.getFullYear(), date.getMonth(), date.getDate())))
+    return text.charAt(0).toUpperCase() + text.slice(1)
   }
 
   // ---- Calendar popup. Shape contract for shell.summon/hide/toggle
