@@ -5,7 +5,7 @@ from omcal import auth
 TOK = {"base": "https://caldav.yandex.ru", "user": "me@astral.ru", "password": "x",
        "home": "/calendars/me%40astral.ru/", "email": "me@astral.ru", "web": "https://calendar.yandex.ru/"}
 CAL = {"id": "/calendars/me%40astral.ru/events-default/", "name": "Мои события", "color": "",
-       "primary": True, "editable": True, "defaultRemind": [], "ctag": "ctag-2"}
+       "primary": True, "editable": True, "defaultRemind": []}
 
 PRINCIPAL = """<?xml version="1.0" encoding="utf-8"?>
 <d:multistatus xmlns:d="DAV:"><d:response><d:href>/</d:href><d:propstat><d:prop>
@@ -151,6 +151,16 @@ def report(*objects):
         "</d:propstat></d:response>" % (href, etag, ics) for href, etag, ics in objects)
     return ('<?xml version="1.0" encoding="utf-8"?><d:multistatus xmlns:d="DAV:" '
             'xmlns:c="urn:ietf:params:xml:ns:caldav">%s</d:multistatus>' % rows).encode()
+
+
+def etags(*pairs):
+    """A PROPFIND Depth 1 reply listing (href, etag) objects, after the collection itself."""
+    rows = "".join(
+        "<d:response><d:href>%s</d:href><d:propstat><d:prop><d:getetag>%s</d:getetag></d:prop>"
+        "<d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>" % (h, e) for h, e in pairs)
+    return ('<?xml version="1.0" encoding="utf-8"?><d:multistatus xmlns:d="DAV:"><d:response>'
+            '<d:href>%s</d:href><d:propstat><d:prop><d:getetag/></d:prop><d:status>HTTP/1.1 404 Not Found'
+            '</d:status></d:propstat></d:response>%s</d:multistatus>' % (CAL["id"], rows)).encode()
 
 
 class FakeServer:

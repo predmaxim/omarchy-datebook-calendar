@@ -13,7 +13,7 @@ from unittest import mock
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 from omcal import auth, caldav, sync  # noqa: E402
 from caldav_fixtures import (ALLDAY, CAL, EXPANDED, HOME, HOME_SET, OUTLOOK_ZONE, PRINCIPAL,  # noqa: E402
-                             SERIES, SINGLE, TOK, FakeServer, report)
+                             SERIES, SINGLE, TOK, FakeServer, etags, report)
 
 
 def replies(*bodies):
@@ -55,10 +55,10 @@ class Calendars(unittest.TestCase):
 
     def test_fields(self):
         work, mine = self.cals
-        self.assertEqual((work["name"], work["color"], work["editable"], work["primary"], work["ctag"]),
-                         ("Работа", "#3F51B5", False, False, "ctag-work"))
-        self.assertEqual((mine["name"], mine["color"], mine["editable"], mine["primary"], mine["ctag"]),
-                         ("Мои события", "", True, True, "ctag-1"))
+        self.assertEqual((work["name"], work["color"], work["editable"], work["primary"]),
+                         ("Работа", "#3F51B5", False, False))
+        self.assertEqual((mine["name"], mine["color"], mine["editable"], mine["primary"]),
+                         ("Мои события", "", True, True))
         self.assertEqual(mine["defaultRemind"], [])
 
 
@@ -66,11 +66,13 @@ WINDOW = ("2026-08-24T00:00:00Z", "2027-01-26T00:00:00Z")
 
 
 def reported(*objects):
-    body = report(*objects)
+    """A server holding these (href, etag, ics) objects: PROPFIND lists their
+    ETags, REPORT returns them."""
+    listing, body = etags(*[(h, e) for h, e, _ in objects]), report(*objects)
 
     def fake(tok, method, path, data=None, headers=None):
         fake.calls.append((method, path, data))
-        return 207, {}, body
+        return 207, {}, listing if method == "PROPFIND" else body
     fake.calls = []
     return fake
 
@@ -82,21 +84,25 @@ class Fetch(unittest.TestCase):
             events, removed, cursor = caldav.fetch("Y", TOK, CAL, WINDOW)
         return {e["title"]: e for e in events}, removed, cursor, fake.calls
 
-    def test_unchanged_ctag_reads_nothing(self):
-        fake = reported()
+    def test_unchanged_etags_read_no_events(self):
+        cursor = self.read(("/c/single.ics", '"e1"', SINGLE))[2]
+        fake = reported(("/c/single.ics", '"e1"', SINGLE))
         with mock.patch.object(caldav, "request", fake):
-            self.assertEqual(caldav.fetch("Y", TOK, CAL, WINDOW, "ctag-2"), ([], [], "ctag-2"))
-        self.assertEqual(fake.calls, [])
+            self.assertEqual(caldav.fetch("Y", TOK, CAL, WINDOW, cursor), ([], [], cursor))
+        self.assertEqual([c[0] for c in fake.calls], ["PROPFIND"])
 
-    def test_moved_ctag_asks_for_a_whole_read(self):
-        with self.assertRaises(caldav.Changed):
-            caldav.fetch("Y", TOK, CAL, WINDOW, "ctag-1")
+    def test_an_edited_event_asks_for_a_whole_read(self):
+        # Yandex's ctag doesn't move when an event is edited; its ETag does.
+        cursor = self.read(("/c/single.ics", '"e1"', SINGLE))[2]
+        with mock.patch.object(caldav, "request", reported(("/c/single.ics", '"e1-edited"', SINGLE))):
+            with self.assertRaises(caldav.Changed):
+                caldav.fetch("Y", TOK, CAL, WINDOW, cursor)
 
     def test_query_asks_for_expansion_of_the_window(self):
         _, _, cursor, calls = self.read()
-        method, path, body = calls[0]
-        self.assertEqual((method, path, cursor), ("REPORT", CAL["id"], "ctag-2"))
-        self.assertIn('<c:expand start="20260824T000000Z" end="20270126T000000Z"/>', body)
+        self.assertEqual([(m, p) for m, p, _ in calls], [("PROPFIND", CAL["id"]), ("REPORT", CAL["id"])])
+        self.assertTrue(cursor)
+        self.assertIn('<c:expand start="20260824T000000Z" end="20270126T000000Z"/>', calls[1][2])
 
     def test_invitation(self):
         ev = self.read(("/c/single.ics", '"e1"', SINGLE))[0]["Планёрка"]
@@ -139,9 +145,9 @@ class Fetch(unittest.TestCase):
 
 
 class Sync(unittest.TestCase):
-    """A moved ctag makes the sync read the calendar whole and drop what's gone."""
+    """A changed calendar is read whole by the sync, dropping what's gone."""
 
-    def test_moved_ctag_replaces_the_calendars_events(self):
+    def test_changed_calendar_replaces_its_events(self):
         from caldav_fixtures import ALLDAY
         with tempfile.TemporaryDirectory() as d, \
                 mock.patch.object(sync, "CACHE", d), \
@@ -152,12 +158,12 @@ class Sync(unittest.TestCase):
             stale = "Y/%s/gone.ics" % CAL["id"]
             sync.write_private(os.path.join(d, "state-Y.json"), {
                 "windowDay": sync.window_now()[0],
-                "calendars": {CAL["id"]: dict(CAL, cursor="ctag-1", fullAt=time.time())},
+                "calendars": {CAL["id"]: dict(CAL, cursor="an older version", fullAt=time.time())},
                 "events": {stale: {"uid": stale, "calendar": CAL["id"], "status": "confirmed"}}})
             st = sync.sync_account({"name": "Y", "provider": "caldav"}, False, lambda *_: None)
         self.assertEqual(st["status"], "ok", st.get("error"))
         self.assertEqual([e["title"] for e in st["events"].values()], ["Отпуск"])
-        self.assertEqual(st["calendars"][CAL["id"]]["cursor"], "ctag-2")
+        self.assertNotIn(st["calendars"][CAL["id"]]["cursor"], (None, "an older version"))
 
 
 HREF = "/calendars/me%40astral.ru/events-default/series.ics"
