@@ -203,7 +203,7 @@ Panel {
   function openUrl(url) {
     // Only ever a link the sync vetted: https, and for joins a known host.
     if (!/^https:\/\//.test(String(url || ""))) return
-    urlProc.command = ["xdg-open", String(url)]
+    urlProc.command = Model.openCommand(url)
     urlProc.running = true
   }
 
@@ -417,7 +417,7 @@ Panel {
     if (/^https:\/\//.test(String(url || "")))
       // The exec hint is what Omarchy runs on a click, and it survives into
       // the notification history; "default" is for other servers.
-      args = args.concat(["--hint=string:omarchy-exec-argv:" + JSON.stringify(["xdg-open", String(url)]),
+      args = args.concat(["--hint=string:omarchy-exec-argv:" + JSON.stringify(Model.openCommand(url)),
                           "--action=default=" + root.tr(e.join ? "Join" : "Open")])
     args = args.concat(["--", text.headline, text.body])
     var p = Qt.createQmlObject('import Quickshell.Io; Process { stdout: StdioCollector { waitForEnd: true } }', root)
