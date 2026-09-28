@@ -12,11 +12,11 @@ followed.
 Reading asks the server to expand recurring events into occurrences for the
 sync window (calendar-query with <C:expand>), so no RRULE is evaluated here.
 Yandex ignores that and sends each series as its rule plus its exceptions:
-until RRULE expansion lands here, such a series shows only its moved or
-edited occurrences. A calendar's
-getctag is its cursor: unchanged, the calendar isn't read at all (Yandex
-rate-limits hard); changed, it is read whole, as CalDAV has no cheap delta
-like Graph's.
+until RRULE expansion lands here, such a series shows only its moved or edited
+occurrences. The cursor is a fingerprint of the calendar's objects and their
+ETags (Yandex's getctag doesn't move on edits): unchanged, the calendar isn't
+read again (Yandex rate-limits hard); changed, it is read whole, as CalDAV has
+no cheap delta like Graph's.
 
 Writing edits the event's own iCalendar object and puts it back guarded by
 its ETag, so a change made elsewhere since the last sync is never
@@ -25,6 +25,8 @@ overwritten. Yandex sometimes answers a write with 504 after making it, so a
 """
 
 import copy
+import hashlib
+import json
 import posixpath
 import urllib.error
 import urllib.parse
@@ -42,12 +44,12 @@ YANDEX_WEB = "https://calendar.yandex.ru/"
 NS = {"d": "DAV:", "c": "urn:ietf:params:xml:ns:caldav",
       "cs": "http://calendarserver.org/ns/", "ical": "http://apple.com/ns/ical/"}
 XML = "application/xml; charset=utf-8"
-CALENDAR_PROPS = ["d:resourcetype", "d:displayname", "ical:calendar-color", "cs:getctag",
+CALENDAR_PROPS = ["d:resourcetype", "d:displayname", "ical:calendar-color",
                   "c:supported-calendar-component-set", "d:current-user-privilege-set"]
 
 
 class Changed(Exception):
-    """The calendar's ctag moved since the last read: read it whole."""
+    """The calendar changed since the last read: read it whole."""
 
 
 def tag(ns, name):
@@ -135,7 +137,7 @@ def _color(c):
 
 
 def calendars(tok):
-    """Every event calendar in the home, with the fields google/graph give, plus its ctag."""
+    """Every event calendar in the home, with the fields google/graph give."""
     out = []
     for href, p in propfind(tok, tok["home"], CALENDAR_PROPS, 1):
         rt = p.get(tag("d", "resourcetype"))
@@ -150,8 +152,7 @@ def calendars(tok):
         out.append({"id": href,
                     "name": _text(p.get(tag("d", "displayname"))) or posixpath.basename(href.rstrip("/")),
                     "color": _color(_text(p.get(tag("ical", "calendar-color")))),
-                    "primary": False, "editable": editable, "defaultRemind": [],
-                    "ctag": _text(p.get(tag("cs", "getctag")))})
+                    "primary": False, "editable": editable, "defaultRemind": []})
     if out:
         main = next((c for c in out if c["id"].rstrip("/").endswith("/events-default")), out[0])
         main["primary"] = True
@@ -171,17 +172,34 @@ PARTSTAT = {"ACCEPTED": "accepted", "TENTATIVE": "tentative", "DECLINED": "decli
             "NEEDS-ACTION": "needsAction"}
 
 
-def fetch(account, tok, cal, window, cursor=None):
-    """(events, removed, cursor) for one calendar; the cursor is its ctag.
+ETAGS = ('<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:">'
+         '<d:prop><d:getetag/></d:prop></d:propfind>')
 
-    With a cursor there is nothing to do if the ctag hasn't moved, and Changed
-    if it has (the sync then reads the calendar whole: removed is always empty,
-    since a whole read replaces the calendar's events). Without one, every
-    event in the window, recurring ones as their occurrences.
+
+def version(tok, cal):
+    """A fingerprint of every event object in the calendar and its ETag.
+
+    Yandex's getctag and sync-token move when an event is added or removed but
+    not when one is edited, so they can't tell a sync that anything changed;
+    the objects' ETags can, for one small PROPFIND.
     """
-    ctag = cal.get("ctag") or None
+    raw = request(tok, "PROPFIND", cal["id"], ETAGS, {"Depth": "1", "Content-Type": XML})[2]
+    pairs = sorted((href, _text(p.get(tag("d", "getetag")))) for href, p in multistatus(raw)
+                   if href.rstrip("/") != cal["id"].rstrip("/"))
+    return hashlib.sha1(json.dumps(pairs).encode()).hexdigest()
+
+
+def fetch(account, tok, cal, window, cursor=None):
+    """(events, removed, cursor) for one calendar; the cursor is its version().
+
+    With a cursor there is nothing to do if the version hasn't changed, and
+    Changed if it has (the sync then reads the calendar whole: removed is
+    always empty, since a whole read replaces the calendar's events). Without
+    one, every event in the window.
+    """
+    now = version(tok, cal)
     if cursor is not None:
-        if cursor == ctag:
+        if cursor == now:
             return [], [], cursor
         raise Changed()
     start, end = (w.replace("-", "").replace(":", "") for w in window)
@@ -207,7 +225,7 @@ def fetch(account, tok, cal, window, cursor=None):
                 events.append(normalise(account, cal, tok, href, _text(p.get(tag("d", "getetag"))), ve))
             except (ValueError, TypeError, AttributeError):
                 continue   # an event this reader can't place is skipped; the rest still show
-    return events, [], ctag
+    return events, [], now
 
 
 def _addr(p):
