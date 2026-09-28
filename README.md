@@ -122,8 +122,13 @@ CalDAV with an app password, so there is no app to register:
 2. `$C add-yandex Yandex you@example.ru` and paste it when asked (it isn't echoed).
 
 Any other CalDAV server works the same way:
-`$C add-caldav Home https://dav.example.org/ you`. Recurring events are
-expanded by the server, and Telemost links get a Join button.
+`$C add-caldav Home https://dav.example.org/ you`. Telemost links get a Join
+button.
+
+**Not yet:** Yandex doesn't expand recurring events for CalDAV clients, and
+this plugin doesn't expand them itself yet, so a repeating event shows only
+the occurrences that were moved or edited. Yandex also doesn't send its
+reminders over CalDAV.
 
 ## Using it
 

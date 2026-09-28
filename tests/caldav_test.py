@@ -125,11 +125,17 @@ class Fetch(unittest.TestCase):
     def test_unknown_tzid_event_still_listed(self):
         self.assertIn("From Outlook", self.read(("/c/o.ics", '"e4"', OUTLOOK_ZONE))[0])
 
-    def test_unexpanded_series_is_reported(self):
-        from caldav_fixtures import SERIES
-        with self.assertRaises(auth.HttpError) as cm:
-            self.read(("/c/s.ics", '"e5"', SERIES))
-        self.assertEqual(cm.exception.code, 501)
+    def test_unexpanded_series_shows_only_its_exceptions(self):
+        # Yandex ignores <C:expand>: the rule's own occurrences aren't shown yet
+        # (a known gap), but a moved or edited occurrence is a VEVENT of its own.
+        fake = reported(("/c/s.ics", '"e5"', SERIES))
+        with mock.patch.object(caldav, "request", fake):
+            events = caldav.fetch("Y", TOK, CAL, WINDOW)[0]
+        self.assertEqual([e["title"] for e in events], ["Standup (moved)"])
+        ev = events[0]
+        self.assertEqual((ev["recurring"], ev["seriesId"], ev["start"], ev["response"]),
+                         (True, "s.ics", "2026-10-07T09:00:00Z", "accepted"))
+        self.assertTrue(ev["uid"].endswith("/s.ics#20261007T070000Z"))
 
 
 class Sync(unittest.TestCase):
