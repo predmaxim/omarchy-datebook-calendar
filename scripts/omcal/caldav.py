@@ -10,8 +10,10 @@ reply naming any other place (an href on another host) is refused, not
 followed.
 
 Reading asks the server to expand recurring events into occurrences for the
-sync window (calendar-query with <C:expand>), so no RRULE is evaluated here;
-a server that ignores that is reported, not worked around. A calendar's
+sync window (calendar-query with <C:expand>), so no RRULE is evaluated here.
+Yandex ignores that and sends each series as its rule plus its exceptions:
+until RRULE expansion lands here, such a series shows only its moved or
+edited occurrences. A calendar's
 getctag is its cursor: unchanged, the calendar isn't read at all (Yandex
 rate-limits hard); changed, it is read whole, as CalDAV has no cheap delta
 like Graph's.
@@ -195,8 +197,12 @@ def fetch(account, tok, cal, window, cursor=None):
         except ValueError:
             continue
         for ve in vevents:
-            if ve.get("RRULE") is not None:
-                raise auth.HttpError(host(tok), 501, "the server did not expand recurring events")
+            if ve.get("RRULE") is not None or ve.get("RDATE") is not None:
+                # ponytail: a series the server didn't expand (Yandex ignores
+                # <C:expand>) shows only its moved or edited occurrences, which
+                # arrive as VEVENTs of their own. Expanding RRULE here (weekly
+                # BYDAY/INTERVAL, EXDATE, zoneinfo) is the upgrade path.
+                continue
             try:
                 events.append(normalise(account, cal, tok, href, _text(p.get(tag("d", "getetag"))), ve))
             except (ValueError, TypeError, AttributeError):
