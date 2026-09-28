@@ -5,6 +5,8 @@ const path = require("path")
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8")
 const M = new Function(src + "; return { parseClock, parseDateText, eventDraft, newDraft, draftArgs," +
   " nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders }")()
+const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "I18n.js"), "utf8").replace(/^\.pragma.*$/m, "")
+const I = new Function(i18nSrc + "; return { translator, language, localeName, TABLES }")()
 
 let failed = 0
 function eq(got, want, name) {
@@ -74,6 +76,16 @@ const back = M.dueSnoozes({ events: [se] }, { "snooze:a/c/1": t - 1 }, t)
 eq(back.length, 1, "snooze: due")
 eq(M.reminderText(back[0], "Work", false).body.indexOf("snoozed · "), 0, "snooze: labelled")
 eq(M.dueSnoozes({ events: [Object.assign({}, se, { end: iso(t - 1) })] }, { "snooze:a/c/1": t - 1 }, t).length, 0, "snooze: not after the end")
+
+// Languages.
+const ru = I.translator("ru"), en = I.translator("en")
+eq([I.language("ru", "en_US"), I.language("", "ru_RU"), I.language("de", "de_DE"), I.language("", "")],
+   ["ru", "ru", "en", "en"], "language: setting, then locale, else English")
+eq([I.localeName("ru"), I.localeName("en")], ["ru_RU", "en_US"], "localeName")
+eq([ru("Today"), ru("In %1 min", 5), ru("No such string"), en("In %1 min", 5)],
+   ["Сегодня", "Через 5 мин", "No such string", "In 5 min"], "tr: table, args, fallback")
+eq(Object.keys(I.TABLES.ru).filter(k => (k.match(/%\d/g) || []).sort().join() !== (I.TABLES.ru[k].match(/%\d/g) || []).sort().join()),
+   [], "tr: every translation keeps its placeholders")
 
 if (failed) { console.log(failed + " failed"); process.exit(1) }
 console.log("all passed")
