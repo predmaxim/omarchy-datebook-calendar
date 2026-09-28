@@ -48,6 +48,18 @@ CALENDAR_PROPS = ["d:resourcetype", "d:displayname", "ical:calendar-color",
                   "c:supported-calendar-component-set", "d:current-user-privilege-set"]
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """urllib would follow a GET's redirect carrying every header, the password
+    included, to wherever it points (another host, or plain http): a 3xx is an
+    error here instead."""
+
+    def redirect_request(self, *args):
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
 class Changed(Exception):
     """The calendar changed since the last read: read it whole."""
 
@@ -76,7 +88,7 @@ def request(tok, method, path, body=None, headers=None):
     data = body.encode() if isinstance(body, str) else body
     req = urllib.request.Request(url, data=data, headers=h, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        with _OPENER.open(req, timeout=30) as r:
             return r.status, r.headers, files.read_reply(r)
     except urllib.error.HTTPError as e:
         if e.code == 401:
