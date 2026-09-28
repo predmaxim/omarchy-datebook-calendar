@@ -31,13 +31,14 @@ function namedFormat(format, dayLong, dayShort, monthShort) {
 }
 
 // How to open a link: a Telemost meeting joins in Omarchy's Telemost web app
-// (omarchy-launch-webapp), anything else goes to the default browser.
+// (omarchy-launch-webapp-sole from my dotfiles keeps it to one window),
+// anything else goes to the default browser.
 // skip_app=1 stops the page from asking to open telemost:// in the desktop
 // app, which Linux doesn't have, over and over.
 function openCommand(url) {
   var u = String(url)
   if (!/^https:\/\/telemost\.(?:360\.)?yandex\.ru\//.test(u)) return ["xdg-open", u]
-  return ["omarchy-launch-webapp", u + (u.indexOf("?") < 0 ? "?" : "&") + "skip_app=1"]
+  return ["omarchy-launch-webapp-sole", u + (u.indexOf("?") < 0 ? "?" : "&") + "skip_app=1"]
 }
 
 // Weekday indices match both JS Date.getDay() and QML's Locale.Sunday…
