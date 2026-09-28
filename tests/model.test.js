@@ -4,7 +4,7 @@ const fs = require("fs")
 const path = require("path")
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8")
 const M = new Function(src + "; return { parseClock, parseDateText, eventDraft, newDraft, draftArgs," +
-  " nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english, rangeTitle, shortDay, indexEvents }")()
+  " nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english, rangeTitle, shortDay, indexEvents, namedFormat }")()
 const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "I18n.js"), "utf8").replace(/^\.pragma.*$/m, "")
 const I = new Function(i18nSrc + "; return { translator, language, localeName, TABLES }")()
 
@@ -99,6 +99,12 @@ const allDayIdx = M.indexEvents({ calendars: [{ account: "a", id: "c", shown: tr
   events: [{ uid: "a/c/1", account: "a", calendar: "c", title: "T", allDay: true, start: "2026-10-05", end: "2026-10-06", status: "confirmed" }] }, true, ru)
 eq([allDayIdx.byDay["2026-10-05"][0].label, allDayIdx.byDay["2026-10-05"][0].allDay], ["Весь день", true], "indexEvents: ru all-day stays all-day")
 eq(M.english("+%1 more", 3), "+3 more", "english: fills args")
+
+// Bar label names: capitalised days, month abbreviations without their dot.
+eq(M.namedFormat("d MMM, ddd HH:mm", "понедельник", "пн", "сент."), "d 'сент', 'Пн' HH:mm", "namedFormat: ru short")
+eq(M.namedFormat("dddd HH:mm", "понедельник", "пн", "сент."), "'Понедельник' HH:mm", "namedFormat: ru long day")
+eq(M.namedFormat("d MMMM 'W'ww yyyy", "Monday", "Mon", "Sep"), "d MMMM 'W'ww yyyy", "namedFormat: long month left to the locale")
+eq(M.namedFormat("ddd d MMM", "Monday", "Mon", "Sep"), "'Mon' d 'Sep'", "namedFormat: English unchanged in effect")
 
 if (failed) { console.log(failed + " failed"); process.exit(1) }
 console.log("all passed")

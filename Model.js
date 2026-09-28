@@ -13,6 +13,18 @@ function english(text) {
 
 var MS_PER_DAY = 86400000
 
+// The bar label's day and month names, put in as literals so they read right
+// in any language: day names capitalised (Russian writes them lower-case) and
+// month abbreviations without their trailing dot ("сент." reads "сент"). Long
+// month names stay with the locale, which knows their grammatical case.
+function namedFormat(format, dayLong, dayShort, monthShort) {
+  var cap = function (s) { return s.charAt(0).toUpperCase() + s.slice(1) }
+  var lit = function (s) { return "'" + s.replace(/'/g, "''") + "'" }
+  return format.replace(/dddd/g, lit(cap(dayLong)))
+               .replace(/ddd/g, lit(cap(dayShort)))
+               .replace(/(^|[^M])MMM(?!M)/g, function (m, pre) { return pre + lit(monthShort.replace(/\.$/, "")) })
+}
+
 // Weekday indices match both JS Date.getDay() and QML's Locale.Sunday…
 // Locale.Saturday, so a locale's firstDayOfWeek can be passed straight in.
 var WEEKDAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
