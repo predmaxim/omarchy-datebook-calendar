@@ -29,19 +29,61 @@ def replies(*bodies):
 
 class Requests(unittest.TestCase):
     def test_request_refuses_other_host(self):
-        with mock.patch.object(caldav.urllib.request, "urlopen") as net:
+        with mock.patch.object(caldav._OPENER, "open") as net:
             with self.assertRaises(auth.HttpError):
                 caldav.request(TOK, "GET", "https://evil.example/calendars/x.ics")
             with self.assertRaises(auth.HttpError):
                 caldav.request(dict(TOK, base="http://caldav.yandex.ru"), "GET", "/x")
             net.assert_not_called()
 
+    def test_redirect_is_refused_not_followed(self):
+        # urllib follows a GET's redirect with every header, Authorization
+        # included, to wherever it points: another host, or plain http.
+        import email.message
+        import io
+        import urllib.response
+        seen = []
+
+        def https_open(handler, req):
+            seen.append(req.full_url)
+            h = email.message.Message()
+            h["Location"] = "https://evil.example/steal"
+            resp = urllib.response.addinfourl(io.BytesIO(b""), h, req.full_url, code=302)
+            resp.msg = "Found"
+            return resp
+        with mock.patch.object(caldav.urllib.request.HTTPSHandler, "https_open", https_open):
+            with self.assertRaises(auth.HttpError) as cm:
+                caldav.request(TOK, "GET", "/calendars/me%40astral.ru/events-default/x.ics")
+        self.assertEqual(cm.exception.code, 302)
+        self.assertEqual(seen, ["https://caldav.yandex.ru/calendars/me%40astral.ru/events-default/x.ics"])
+
     def test_discover_follows_principal_to_home(self):
         fake = replies(PRINCIPAL, HOME_SET)
         with mock.patch.object(caldav, "request", fake):
             self.assertEqual(caldav.discover(TOK), "/calendars/me%40astral.ru/")
         self.assertEqual([(m, p, h["Depth"]) for m, p, h in fake.calls],
-                         [("PROPFIND", "/", "0"), ("PROPFIND", "/principals/users/me%40astral.ru/", "0")])
+                         [("PROPFIND", "", "0"), ("PROPFIND", "/principals/users/me%40astral.ru/", "0")])
+
+
+class Accounts(unittest.TestCase):
+    """add_caldav keeps the address attendees are matched on, which a login needn't be."""
+
+    def add(self, *args):
+        saved = []
+        with mock.patch("getpass.getpass", return_value="pw"), \
+                mock.patch.object(caldav, "discover", return_value="/home/"), \
+                mock.patch.object(caldav, "calendars", return_value=[]), \
+                mock.patch.object(auth, "secret_store"), \
+                mock.patch.object(auth, "save_account", side_effect=saved.append):
+            auth.add_caldav(*args)
+        return saved[0]
+
+    def test_email_defaults_to_the_login(self):
+        self.assertEqual(self.add("Y", "https://caldav.yandex.ru", "me@astral.ru")["email"], "me@astral.ru")
+
+    def test_email_can_differ_from_the_login(self):
+        a = self.add("N", "https://cloud.example.org/remote.php/dav", "max", "", "max@example.org")
+        self.assertEqual((a["user"], a["email"], a["base"]), ("max", "max@example.org", "https://cloud.example.org/remote.php/dav"))
 
 
 class Calendars(unittest.TestCase):
