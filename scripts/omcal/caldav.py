@@ -48,6 +48,18 @@ CALENDAR_PROPS = ["d:resourcetype", "d:displayname", "ical:calendar-color",
                   "c:supported-calendar-component-set", "d:current-user-privilege-set"]
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """urllib would follow a GET's redirect carrying every header, the password
+    included, to wherever it points (another host, or plain http): a 3xx is an
+    error here instead."""
+
+    def redirect_request(self, *args):
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
 class Changed(Exception):
     """The calendar changed since the last read: read it whole."""
 
@@ -76,7 +88,7 @@ def request(tok, method, path, body=None, headers=None):
     data = body.encode() if isinstance(body, str) else body
     req = urllib.request.Request(url, data=data, headers=h, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        with _OPENER.open(req, timeout=30) as r:
             return r.status, r.headers, files.read_reply(r)
     except urllib.error.HTTPError as e:
         if e.code == 401:
@@ -124,7 +136,8 @@ def _text(el):
 
 def discover(tok):
     """The signed-in user's calendar home, as an href."""
-    principal = _href(propfind(tok, "/", ["d:current-user-principal"], 0), tag("d", "current-user-principal"))
+    # From the server address itself: a Nextcloud-style base has a path to keep.
+    principal = _href(propfind(tok, "", ["d:current-user-principal"], 0), tag("d", "current-user-principal"))
     home = principal and _href(propfind(tok, principal, ["c:calendar-home-set"], 0), tag("c", "calendar-home-set"))
     if not home:
         raise auth.HttpError(host(tok), 404, "no CalDAV calendar home for %s" % tok["user"])

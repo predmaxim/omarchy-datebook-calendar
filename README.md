@@ -122,7 +122,8 @@ CalDAV with an app password, so there is no app to register:
 2. `$C add-yandex Yandex you@example.ru` and paste it when asked (it isn't echoed).
 
 Any other CalDAV server works the same way:
-`$C add-caldav Home https://dav.example.org/ you`. Telemost links get a Join
+`$C add-caldav Home https://dav.example.org/ you` (add your email address
+after the login if the login isn't one). Telemost links get a Join
 button.
 
 **Not yet:** Yandex doesn't expand recurring events for CalDAV clients, and
