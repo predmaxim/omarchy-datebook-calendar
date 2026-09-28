@@ -97,7 +97,8 @@ Item {
 
   function providerName() {
     var link = editor.event ? String(editor.event.webLink || "") : ""
-    return link.indexOf("google.com") >= 0 ? "Google Calendar" : "Outlook"
+    return link.indexOf("google.com") >= 0 ? "Google Calendar"
+         : link.indexOf("yandex.") >= 0 ? "Yandex Calendar" : "Outlook"
   }
 
   component Caption: Text {
