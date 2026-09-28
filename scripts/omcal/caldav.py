@@ -136,7 +136,8 @@ def _text(el):
 
 def discover(tok):
     """The signed-in user's calendar home, as an href."""
-    principal = _href(propfind(tok, "/", ["d:current-user-principal"], 0), tag("d", "current-user-principal"))
+    # From the server address itself: a Nextcloud-style base has a path to keep.
+    principal = _href(propfind(tok, "", ["d:current-user-principal"], 0), tag("d", "current-user-principal"))
     home = principal and _href(propfind(tok, principal, ["c:calendar-home-set"], 0), tag("c", "calendar-home-set"))
     if not home:
         raise auth.HttpError(host(tok), 404, "no CalDAV calendar home for %s" % tok["user"])
