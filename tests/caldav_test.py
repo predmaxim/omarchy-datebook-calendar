@@ -62,7 +62,28 @@ class Requests(unittest.TestCase):
         with mock.patch.object(caldav, "request", fake):
             self.assertEqual(caldav.discover(TOK), "/calendars/me%40astral.ru/")
         self.assertEqual([(m, p, h["Depth"]) for m, p, h in fake.calls],
-                         [("PROPFIND", "/", "0"), ("PROPFIND", "/principals/users/me%40astral.ru/", "0")])
+                         [("PROPFIND", "", "0"), ("PROPFIND", "/principals/users/me%40astral.ru/", "0")])
+
+
+class Accounts(unittest.TestCase):
+    """add_caldav keeps the address attendees are matched on, which a login needn't be."""
+
+    def add(self, *args):
+        saved = []
+        with mock.patch("getpass.getpass", return_value="pw"), \
+                mock.patch.object(caldav, "discover", return_value="/home/"), \
+                mock.patch.object(caldav, "calendars", return_value=[]), \
+                mock.patch.object(auth, "secret_store"), \
+                mock.patch.object(auth, "save_account", side_effect=saved.append):
+            auth.add_caldav(*args)
+        return saved[0]
+
+    def test_email_defaults_to_the_login(self):
+        self.assertEqual(self.add("Y", "https://caldav.yandex.ru", "me@astral.ru")["email"], "me@astral.ru")
+
+    def test_email_can_differ_from_the_login(self):
+        a = self.add("N", "https://cloud.example.org/remote.php/dav", "max", "", "max@example.org")
+        self.assertEqual((a["user"], a["email"], a["base"]), ("max", "max@example.org", "https://cloud.example.org/remote.php/dav"))
 
 
 class Calendars(unittest.TestCase):

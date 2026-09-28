@@ -309,11 +309,13 @@ def ms_access(a):
 
 # ---------------------------------------------------------------- CalDAV
 
-def add_caldav(name, base, user, web=""):
+def add_caldav(name, base, user, web="", email=""):
     """Sign in to a CalDAV server with an app password, typed without echo.
 
     The password is checked by finding the calendar home before anything is
     saved; the home is kept with the account so a sync needn't look it up.
+    email is the address invitations name this account by, when the login
+    isn't one (Nextcloud's "max").
     """
     import getpass
     from . import caldav
@@ -323,7 +325,7 @@ def add_caldav(name, base, user, web=""):
     password = getpass.getpass("App password for %s: " % user)
     if not password:
         die("no password given")
-    tok = {"base": base.rstrip("/"), "user": user, "password": password, "email": user, "web": web}
+    tok = {"base": base.rstrip("/"), "user": user, "password": password, "email": email or user, "web": web}
     try:
         tok["home"] = caldav.discover(tok)
         cals = caldav.calendars(tok)
@@ -332,7 +334,7 @@ def add_caldav(name, base, user, web=""):
             "id.yandex.ru → Security → App passwords)" % (caldav.host(tok), user))
     secret_store(name, {"password": password})
     save_account({"name": name, "provider": "caldav", "base": tok["base"], "user": user,
-                  "email": user, "home": tok["home"], "web": web})
+                  "email": tok["email"], "home": tok["home"], "web": web})
     print("Added %s (%s): %d calendars." % (name, user, len(cals)))
 
 

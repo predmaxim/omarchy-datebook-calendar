@@ -4,7 +4,7 @@
     calendar-ctl add-google <name> <client_secret.json>
     calendar-ctl add-microsoft <name> --tenant <tenant-id> --client-id <app-id>
     calendar-ctl add-yandex <name> <email>              # asks for a Yandex app password
-    calendar-ctl add-caldav <name> <https://server> <user>
+    calendar-ctl add-caldav <name> <https://server> <user> [<email>]
     calendar-ctl list
     calendar-ctl test <name>          # the next five events, to prove access
     calendar-ctl sync [--full]        # bring the local copy up to date
@@ -200,8 +200,8 @@ def main(argv):
     elif cmd == "add-yandex" and len(args) == 2:
         from omcal import caldav
         add_caldav(args[0], caldav.YANDEX, args[1], caldav.YANDEX_WEB)
-    elif cmd == "add-caldav" and len(args) == 3:
-        add_caldav(args[0], args[1], args[2])
+    elif cmd == "add-caldav" and len(args) in (3, 4):
+        add_caldav(args[0], args[1], args[2], "", args[3] if len(args) == 4 else "")
     elif cmd == "list" and not args:
         for a in load_accounts():
             print("%-16s %-10s %s" % (a["name"], a["provider"], a.get("email", "")))
