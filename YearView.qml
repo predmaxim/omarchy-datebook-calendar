@@ -37,7 +37,7 @@ Item {
     : cellByWidth
   readonly property real cell: Math.max(Style.space(14), Math.floor(Math.min(cellByWidth, cellByHeight, Style.space(34))))
   readonly property var weekdays: Model.weekdayOrder(weekStart)
-  readonly property var monthNames: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(function (i) { return year.labelLocale.standaloneMonthName(i, Locale.LongFormat) })
+  readonly property var monthNames: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(function (i) { return Model.capitalize(year.labelLocale.standaloneMonthName(i, Locale.LongFormat)) })
   readonly property int thisMonth: Model.keyToDate(todayKey || Model.keyForDate(new Date())).getMonth()
   readonly property bool thisYear: Model.keyToDate(todayKey || Model.keyForDate(new Date())).getFullYear() === yearNumber
 
