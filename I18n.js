@@ -31,6 +31,7 @@ var TABLES = {
     "sign-in needed": "нужен вход", "offline": "нет сети", "couldn't sync": "не удалось синхронизировать",
     "sign-in needed (calendar-ctl add-%1 %2 …)": "нужен вход (calendar-ctl add-%1 %2 …)",
     "offline, showing the last copy": "нет сети, показана последняя копия",
+    "No accounts yet: add one with calendar-ctl.": "Аккаунтов пока нет: добавьте через calendar-ctl.",
     // Next up, joining, reminders
     "Now · %1 min left": "Сейчас · осталось %1 мин", "Now · until %1": "Сейчас · до %1",
     "In %1 min": "Через %1 мин", "In %1 h %2 min · %3": "Через %1 ч %2 мин · %3",

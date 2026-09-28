@@ -14,20 +14,21 @@ Item {
   id: layout
 
   property var p: null
+  property var tr: Model.english                 // I18n.translator from the panel
+  property var labelLocale: Qt.locale("en_US")   // day and month names
 
   readonly property color fg: p ? p.contentForeground : Color.foreground
   readonly property string fontName: p ? p.contentFontFamily : Style.font.family
   readonly property int railWidth: Style.space(236)
   readonly property int gap: Style.space(14)
 
-  readonly property var next: p ? Model.nextUp(p.eventIndex.byDay, p.clockNow, p.use24h) : null
+  readonly property var next: p ? Model.nextUp(p.eventIndex.byDay, p.clockNow, p.use24h, layout.tr) : null
 
   readonly property string title: {
     if (!p) return ""
     if (p.viewMode === "month")
-      return ["January", "February", "March", "April", "May", "June", "July", "August",
-              "September", "October", "November", "December"][p.viewMonth] + " " + p.viewYear
-    return Model.rangeTitle(p.viewMode, p.selectedKey, p.weekStart)
+      return layout.labelLocale.standaloneMonthName(p.viewMonth, Locale.LongFormat) + " " + p.viewYear
+    return Model.rangeTitle(p.viewMode, p.selectedKey, p.weekStart, layout.tr)
   }
 
   // ---------------------------------------------------------------- header
@@ -60,15 +61,15 @@ Item {
       PanelActionButton {
         anchors.verticalCenter: parent.verticalCenter
         iconText: "󰅁"
-        tooltipText: "Previous ([)"
+        tooltipText: layout.tr("Previous ([)")
         foreground: layout.fg
         fontFamily: layout.fontName
         onClicked: layout.p.step(-1)
       }
       Button {
         anchors.verticalCenter: parent.verticalCenter
-        text: "Today"
-        tooltipText: "Back to today (t)"
+        text: layout.tr("Today")
+        tooltipText: layout.tr("Back to today (t)")
         foreground: layout.fg
         fontFamily: layout.fontName
         onClicked: layout.p.goToToday()
@@ -76,7 +77,7 @@ Item {
       PanelActionButton {
         anchors.verticalCenter: parent.verticalCenter
         iconText: "󰅂"
-        tooltipText: "Next (])"
+        tooltipText: layout.tr("Next (])")
         foreground: layout.fg
         fontFamily: layout.fontName
         onClicked: layout.p.step(1)
@@ -103,7 +104,7 @@ Item {
       PanelActionButton {
         anchors.verticalCenter: parent.verticalCenter
         iconText: layout.p && layout.p.syncing ? "󰑓" : "󰑐"
-        tooltipText: layout.p && layout.p.syncing ? "Syncing…" : "Sync now"
+        tooltipText: layout.tr(layout.p && layout.p.syncing ? "Syncing…" : "Sync now")
         foreground: layout.fg
         fontFamily: layout.fontName
         onClicked: layout.p.syncNow()
@@ -112,7 +113,7 @@ Item {
       PanelActionButton {
         anchors.verticalCenter: parent.verticalCenter
         iconText: "󰊔"
-        tooltipText: "Compact: Omarchy's month and the day's appointments"
+        tooltipText: layout.tr("Compact: Omarchy's month and the day's appointments")
         foreground: layout.fg
         fontFamily: layout.fontName
         onClicked: layout.p.setLayout(false)
@@ -123,8 +124,8 @@ Item {
         visible: layout.p && layout.p.editableCalendars.length > 0
         bordered: true
         iconText: "󰐕"
-        text: "New"
-        tooltipText: "New event on the selected day (n)"
+        text: layout.tr("New")
+        tooltipText: layout.tr("New event on the selected day (n)")
         foreground: Color.accent
         fontFamily: layout.fontName
         onClicked: layout.p.newEvent()
@@ -193,7 +194,7 @@ Item {
             wrapMode: Text.WordWrap
             maximumLineCount: 2
             elide: Text.ElideRight
-            text: nextCard.n ? nextCard.n.event.title : "Nothing in the next week"
+            text: nextCard.n ? nextCard.n.event.title : layout.tr("Nothing in the next week")
             color: nextCard.n ? layout.fg : Qt.darker(layout.fg, 1.6)
             font.family: layout.fontName
             font.pixelSize: Style.font.body
@@ -220,7 +221,7 @@ Item {
               visible: !!nextCard.n && !!nextCard.n.event.join
               bordered: true
               iconText: "󰕧"
-              text: "Join"
+              text: layout.tr("Join")
               foreground: nextCard.n && (nextCard.n.live || nextCard.n.soon) ? Color.accent : layout.fg
               fontFamily: layout.fontName
               onClicked: layout.p.openUrl(nextCard.n.event.join.url)
@@ -229,8 +230,8 @@ Item {
               id: snoozeNext
               visible: !!nextCard.n && layout.p.canSnooze(nextCard.n.event, layout.p.fired, layout.p.clockNow)
               iconText: "󰒲"
-              text: "Snooze"
-              tooltipText: "Remind me again in " + layout.p.snoozeMinutes + " minutes"
+              text: layout.tr("Snooze")
+              tooltipText: layout.tr("Remind me again in %1 minutes", layout.p.snoozeMinutes)
               foreground: layout.fg
               fontFamily: layout.fontName
               onClicked: layout.p.snooze(nextCard.n.event)
@@ -240,6 +241,8 @@ Item {
       }
 
       MiniMonth {
+        tr: layout.tr
+        labelLocale: layout.labelLocale
         width: parent.width
         selectedKey: layout.p ? layout.p.selectedKey : ""
         todayKey: layout.p ? layout.p.todayKey : ""
@@ -294,8 +297,8 @@ Item {
                 elide: Text.ElideRight
                 textFormat: Text.PlainText
                 text: calRow.modelData.account + (calRow.account.status && calRow.account.status !== "ok"
-                      ? "  ·  " + (calRow.account.status === "signin" ? "sign-in needed"
-                                   : calRow.account.status === "offline" ? "offline" : "couldn't sync") : "")
+                      ? "  ·  " + (calRow.account.status === "signin" ? layout.tr("sign-in needed")
+                                   : calRow.account.status === "offline" ? layout.tr("offline") : layout.tr("couldn't sync")) : "")
                 color: calRow.account.status && calRow.account.status !== "ok" ? Color.urgent : Qt.darker(layout.fg, 1.25)
                 font.family: layout.fontName
                 font.pixelSize: Style.font.caption
@@ -363,7 +366,7 @@ Item {
           width: parent.width
           wrapMode: Text.WordWrap
           textFormat: Text.PlainText
-          text: "No accounts yet: add one with calendar-ctl."
+          text: layout.tr("No accounts yet: add one with calendar-ctl.")
           color: Qt.darker(layout.fg, 1.6)
           font.family: layout.fontName
           font.pixelSize: Style.font.bodySmall
@@ -384,6 +387,8 @@ Item {
     clip: true
 
     MonthGrid {
+      tr: layout.tr
+      labelLocale: layout.labelLocale
       visible: layout.p && layout.p.viewMode === "month"
       anchors.fill: parent
       year: layout.p ? layout.p.viewYear : 2026
@@ -401,6 +406,8 @@ Item {
     }
 
     TimeGrid {
+      tr: layout.tr
+      labelLocale: layout.labelLocale
       id: timeGrid
       visible: layout.p && layout.p.isTimeView
       width: parent.width
@@ -418,6 +425,8 @@ Item {
     }
 
     YearView {
+      tr: layout.tr
+      labelLocale: layout.labelLocale
       visible: layout.p && layout.p.viewMode === "year"
       anchors.verticalCenter: parent.verticalCenter
       width: parent.width
@@ -466,6 +475,8 @@ Item {
       boundsBehavior: Flickable.StopAtBounds
 
       EventEditor {
+        tr: layout.tr
+        labelLocale: layout.labelLocale
         id: sheetEditor
         width: parent.width
         draft: layout.p && layout.p.modern ? layout.p.draft : null

@@ -123,6 +123,10 @@ ID. If the organisation requires admin consent, an admin has to grant it once.
   same in a checklist.
 - **Keys:** `1`–`5` views, `[` `]` or the arrow keys to step, `t` today,
   `n` new event, `w` to flip the first day of the week.
+- **Language.** The interface follows the system language where a translation
+  exists (English and Russian so far); set `"language": "ru"` (or `"en"`) on the
+  bar entry in `~/.config/omarchy/shell.json` to choose. Translations live in
+  `I18n.js`, keyed by the English text.
 - **Sync** runs every three minutes while the shell runs, and when you open
   the calendar. `calendar-ctl sync` runs one by hand.
 
