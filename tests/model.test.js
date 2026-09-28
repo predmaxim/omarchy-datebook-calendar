@@ -4,7 +4,7 @@ const fs = require("fs")
 const path = require("path")
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8")
 const M = new Function(src + "; return { parseClock, parseDateText, eventDraft, newDraft, draftArgs," +
-  " nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders }")()
+  " nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, openCommand }")()
 
 let failed = 0
 function eq(got, want, name) {
@@ -74,6 +74,13 @@ const back = M.dueSnoozes({ events: [se] }, { "snooze:a/c/1": t - 1 }, t)
 eq(back.length, 1, "snooze: due")
 eq(M.reminderText(back[0], "Work", false).body.indexOf("snoozed · "), 0, "snooze: labelled")
 eq(M.dueSnoozes({ events: [Object.assign({}, se, { end: iso(t - 1) })] }, { "snooze:a/c/1": t - 1 }, t).length, 0, "snooze: not after the end")
+
+// Telemost meetings open in the Telemost web app; everything else in the browser.
+eq(M.openCommand("https://telemost.yandex.ru/j/12345678901234"),
+   ["omarchy-launch-webapp", "https://telemost.yandex.ru/j/12345678901234"], "openCommand: Telemost")
+eq(M.openCommand("https://telemost.360.yandex.ru/j/5566"), ["omarchy-launch-webapp", "https://telemost.360.yandex.ru/j/5566"], "openCommand: Telemost 360")
+eq(M.openCommand("https://calendar.yandex.ru/event?event_id=1"), ["xdg-open", "https://calendar.yandex.ru/event?event_id=1"], "openCommand: other links")
+eq(M.openCommand("https://telemost.yandex.ru.evil.example/j/1")[0], "xdg-open", "openCommand: lookalike host")
 
 if (failed) { console.log(failed + " failed"); process.exit(1) }
 console.log("all passed")
