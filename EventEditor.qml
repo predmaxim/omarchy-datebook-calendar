@@ -173,7 +173,7 @@ Item {
     Row {
       visible: editor.editable
       spacing: Style.space(10)
-      Caption { anchors.verticalCenter: parent.verticalCenter; text: "SHOW AS"; width: Style.space(60) }
+      Caption { anchors.verticalCenter: parent.verticalCenter; text: editor.tr("SHOW AS"); width: Style.space(60) }
       ButtonGroup {
         options: [
           { label: editor.tr("Busy"), value: "busy", tooltip: editor.tr("Others see you as busy") },
@@ -199,11 +199,11 @@ Item {
       rowSpacing: Style.space(6)
       verticalItemAlignment: Grid.AlignVCenter
 
-      Caption { text: "STARTS"; width: Style.space(60) }
+      Caption { text: editor.tr("STARTS"); width: Style.space(60) }
       Field { id: dateField; width: Style.space(120); placeholderText: "2026-10-02" }
       Field { id: fromField; visible: !editor.allDay; width: Style.space(90); placeholderText: "14:30" }
 
-      Caption { text: editor.allDay ? "LAST DAY" : "ENDS"; width: Style.space(60) }
+      Caption { text: editor.tr(editor.allDay ? "LAST DAY" : "ENDS"); width: Style.space(60) }
       Field { id: endDateField; width: Style.space(120); placeholderText: "2026-10-02" }
       Field { id: toField; visible: !editor.allDay; width: Style.space(90); placeholderText: "15:30" }
     }

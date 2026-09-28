@@ -27,7 +27,7 @@ Item {
   readonly property string title: {
     if (!p) return ""
     if (p.viewMode === "month")
-      return layout.labelLocale.standaloneMonthName(p.viewMonth, Locale.LongFormat) + " " + p.viewYear
+      return Model.capitalize(layout.labelLocale.standaloneMonthName(p.viewMonth, Locale.LongFormat)) + " " + p.viewYear
     return Model.rangeTitle(p.viewMode, p.selectedKey, p.weekStart, layout.tr)
   }
 
@@ -262,7 +262,7 @@ Item {
           leftPadding: Style.space(4)
           bottomPadding: Style.space(2)
           textFormat: Text.PlainText
-          text: "CALENDARS"
+          text: layout.tr("CALENDARS")
           color: Qt.darker(layout.fg, 1.5)
           font.family: layout.fontName
           font.pixelSize: Style.font.caption

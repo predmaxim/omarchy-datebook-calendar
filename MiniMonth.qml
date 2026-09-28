@@ -49,7 +49,7 @@ Item {
       anchors.leftMargin: Style.space(4)
       anchors.verticalCenter: parent.verticalCenter
       textFormat: Text.PlainText
-      text: mini.labelLocale.standaloneMonthName(mini.month, Locale.LongFormat) + " " + mini.year
+      text: Model.capitalize(mini.labelLocale.standaloneMonthName(mini.month, Locale.LongFormat)) + " " + mini.year
       color: mini.foreground
       font.family: mini.fontFamily
       font.pixelSize: Style.font.bodySmall

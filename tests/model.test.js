@@ -4,7 +4,7 @@ const fs = require("fs")
 const path = require("path")
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8")
 const M = new Function(src + "; return { parseClock, parseDateText, eventDraft, newDraft, draftArgs," +
-  " nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english, rangeTitle, shortDay, indexEvents, namedFormat, openCommand }")()
+  " nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english, rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize }")()
 const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "I18n.js"), "utf8").replace(/^\.pragma.*$/m, "")
 const I = new Function(i18nSrc + "; return { translator, language, localeName, TABLES }")()
 
@@ -111,6 +111,11 @@ eq(M.openCommand("https://telemost.yandex.ru/j/12345678901234"),
 eq(M.openCommand("https://telemost.360.yandex.ru/j/5566"), ["omarchy-launch-webapp", "https://telemost.360.yandex.ru/j/5566"], "openCommand: Telemost 360")
 eq(M.openCommand("https://calendar.yandex.ru/event?event_id=1"), ["xdg-open", "https://calendar.yandex.ru/event?event_id=1"], "openCommand: other links")
 eq(M.openCommand("https://telemost.yandex.ru.evil.example/j/1")[0], "xdg-open", "openCommand: lookalike host")
+
+// Headings: every caption has a Russian form; month names start upper-case.
+eq(["CALENDARS", "SHOW AS", "STARTS", "LAST DAY", "ENDS", "BORN", "LIVE TO", "LIFE"].filter(k => !(k in I.TABLES.ru)),
+   [], "tr: captions translated")
+eq([M.capitalize("сентябрь 2026"), M.capitalize("September"), M.capitalize("")], ["Сентябрь 2026", "September", ""], "capitalize")
 
 if (failed) { console.log(failed + " failed"); process.exit(1) }
 console.log("all passed")
