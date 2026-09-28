@@ -205,6 +205,9 @@ Panel {
     if (!/^https:\/\//.test(String(url || ""))) return
     urlProc.command = Model.openCommand(url)
     urlProc.running = true
+    // The link opens in its own window (a meeting, the event on the web):
+    // the calendar gets out of its way, as it does for "Choose calendars".
+    if (root.opened) root.close()
   }
 
   // ---- Writes (calendar-ctl, one at a time). The ctl patches the local copy
