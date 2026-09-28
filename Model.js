@@ -13,6 +13,11 @@ function english(text) {
 
 var MS_PER_DAY = 86400000
 
+// Month names come from the locale lower-case in Russian; headings start upper-case.
+function capitalize(text) {
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
 // The bar label's day and month names, put in as literals so they read right
 // in any language: day names capitalised (Russian writes them lower-case) and
 // month abbreviations without their trailing dot ("сент." reads "сент"). Long

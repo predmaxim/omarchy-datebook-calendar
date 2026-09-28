@@ -49,6 +49,8 @@ var TABLES = {
     // Editor
     "NEW EVENT": "НОВОЕ СОБЫТИЕ", "EDIT EVENT": "ИЗМЕНИТЬ СОБЫТИЕ", "INVITATION": "ПРИГЛАШЕНИЕ",
     "Title": "Название", "Busy": "Занят", "Free": "Свободен",
+    "SHOW AS": "ПОКАЗЫВАТЬ", "STARTS": "НАЧАЛО", "LAST DAY": "ПОСЛЕДНИЙ ДЕНЬ", "ENDS": "КОНЕЦ",
+    "CALENDARS": "КАЛЕНДАРИ", "BORN": "РОЖДЕНИЕ", "LIVE TO": "ПРОЖИТЬ ДО", "LIFE": "ЖИЗНЬ",
     "Others see you as busy": "Другие видят, что вы заняты",
     "Others see you as available": "Другие видят, что вы свободны",
     "Location": "Место", "Invite: email addresses, separated by commas": "Пригласить: адреса через запятую",
