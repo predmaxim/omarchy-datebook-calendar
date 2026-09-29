@@ -706,14 +706,33 @@ Panel {
               }
             }
 
-            PanelActionButton {
+            Row {
               anchors.right: parent.right
               anchors.top: parent.top
-              iconText: "󰊓"
-              tooltipText: root.tr("Expand: week, month and year views, and your calendars")
-              foreground: root.contentForeground
-              fontFamily: root.contentFontFamily
-              onClicked: root.setLayout(true)
+
+              PanelActionButton {
+                iconText: "󰃭"
+                tooltipText: root.tr("Pick which calendars to show")
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                onClicked: root.chooseCalendars()
+              }
+
+              PanelActionButton {
+                iconText: syncProc.running ? "󰑓" : "󰑐"
+                tooltipText: root.tr(syncProc.running ? "Syncing…" : "Sync now")
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                onClicked: root.syncNow()
+              }
+
+              PanelActionButton {
+                iconText: "󰊓"
+                tooltipText: root.tr("Expand: week, month and year views, and your calendars")
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                onClicked: root.setLayout(true)
+              }
             }
           }
 
@@ -1294,7 +1313,7 @@ Panel {
                   id: eventRow
                   required property var modelData
                   width: agenda.width
-                  height: Math.max(eventText.implicitHeight, rowButtons.visible ? rowButtons.height : 0) + Style.space(8)
+                  height: Math.max(eventText.implicitHeight, rowButtons.height) + Style.space(8)
                   radius: Style.cornerRadius
                   color: rowMouse.containsMouse ? Style.hoverFillFor(root.contentForeground, Color.accent) : "transparent"
                   opacity: modelData.declined ? 0.5 : 1
@@ -1322,7 +1341,7 @@ Panel {
                     id: eventText
                     anchors.left: colorBar.right
                     anchors.leftMargin: Style.space(10)
-                    anchors.right: rowButtons.visible ? rowButtons.left : parent.right
+                    anchors.right: rowButtons.left
                     anchors.rightMargin: Style.space(8)
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: Style.space(1)
@@ -1336,17 +1355,6 @@ Panel {
                       font.family: root.contentFontFamily
                       font.pixelSize: Style.font.body
                       font.strikeout: eventRow.modelData.declined
-                    }
-
-                    Text {
-                      width: parent.width
-                      textFormat: Text.PlainText
-                      elide: Text.ElideRight
-                      text: eventRow.modelData.label + "  ·  " + eventRow.modelData.calendarName
-                        + (eventRow.modelData.location && !eventRow.modelData.join ? "  ·  " + eventRow.modelData.location : "")
-                      color: Qt.darker(root.contentForeground, 1.5)
-                      font.family: root.contentFontFamily
-                      font.pixelSize: Style.font.bodySmall
                     }
 
                     // An invitation not yet answered for sure: answer it here.
@@ -1381,12 +1389,22 @@ Panel {
                     }
                   }
 
+                  // One line: the time, then Snooze and Join, on the right.
                   Row {
                     id: rowButtons
-                    visible: joinButton.visible || snoozeButton.visible
                     anchors.right: parent.right
+                    anchors.rightMargin: Style.space(4)
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: Style.space(6)
+
+                  Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    textFormat: Text.PlainText
+                    text: eventRow.modelData.label
+                    color: Qt.darker(root.contentForeground, 1.5)
+                    font.family: root.contentFontFamily
+                    font.pixelSize: Style.font.bodySmall
+                  }
 
                   // Omarchy's notification cards have no buttons, only a
                   // click (which joins), so Snooze lives here while a
@@ -1408,7 +1426,6 @@ Panel {
                     bordered: true
                     visible: !!eventRow.modelData.join
                     iconText: "󰕧"
-                    text: root.tr("Join")
                     tooltipText: eventRow.modelData.join
                       ? root.tr("Join the %1 meeting", ({teams: "Teams", zoom: "Zoom", meet: "Meet", webex: "Webex", telemost: "Telemost"}[eventRow.modelData.join.kind] || root.tr("online")))
                       : ""
@@ -1435,29 +1452,6 @@ Panel {
                   color: Color.urgent
                   font.family: root.contentFontFamily
                   font.pixelSize: Style.font.bodySmall
-                }
-              }
-
-              Row {
-                anchors.right: parent.right
-                spacing: Style.space(4)
-
-                Button {
-                  iconText: "󰃭"
-                  text: root.tr("Choose calendars")
-                  tooltipText: root.tr("Pick which calendars to show")
-                  foreground: root.contentForeground
-                  fontFamily: root.contentFontFamily
-                  onClicked: root.chooseCalendars()
-                }
-
-                Button {
-                  iconText: syncProc.running ? "󰑓" : "󰑐"
-                  text: root.tr(syncProc.running ? "Syncing…" : "Sync")
-                  tooltipText: root.tr("Sync now")
-                  foreground: root.contentForeground
-                  fontFamily: root.contentFontFamily
-                  onClicked: root.syncNow()
                 }
               }
             }
