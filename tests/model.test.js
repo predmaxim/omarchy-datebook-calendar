@@ -4,7 +4,7 @@ const fs = require("fs")
 const path = require("path")
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8")
 const M = new Function(src + "; return { nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english," +
-  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify, answerLabel, isInvitation }")()
+  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify, answerLabel, isInvitation, boldTime }")()
 const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "I18n.js"), "utf8").replace(/^\.pragma.*$/m, "")
 const I = new Function(i18nSrc + "; return { translator, textLanguage, formatLocaleName, TABLES }")()
 
@@ -14,6 +14,11 @@ function eq(got, want, name) {
   if (!ok) failed++
   console.log((ok ? "ok   " : "FAIL ") + name + (ok ? "" : "\n     got  " + JSON.stringify(got) + "\n     want " + JSON.stringify(want)))
 }
+
+// Bar label: only the time is bold.
+eq(M.boldTime("29 сент., Вт 09:44"), "29 сент., Вт <b>09:44</b>", "boldTime: date and time")
+eq(M.boldTime("Mon 9:05:30 PM"), "Mon <b>9:05:30 PM</b>", "boldTime: seconds and AM/PM")
+eq(M.boldTime("a<b & c"), "a&lt;b &amp; c", "boldTime: no time, markup escaped")
 
 // Next up.
 const now = new Date(2026, 8, 28, 9, 50), k = M.keyForDate(now)

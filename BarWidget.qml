@@ -170,7 +170,7 @@ BarWidget {
     bar: root.bar
     text: root.vertical ? "" : root.displayText
     labelVisible: false
-    // The label is drawn here, bold: WidgetButton's own has no weight.
+    // The label is drawn here, time in bold: WidgetButton's own has no weight.
     fixedWidth: root.vertical ? -1 : boldLabel.implicitWidth + Style.spaceReal(horizontalMargin) * 2
     hasVisualContent: root.vertical ? root.verticalLines.length > 0 : text !== ""
     fixedHeight: root.vertical ? root.verticalLines.length * Style.bar.iconSlot : -1
@@ -187,12 +187,11 @@ BarWidget {
       id: boldLabel
       visible: !root.vertical
       anchors.centerIn: parent
-      textFormat: Text.PlainText
-      text: root.displayText
+      textFormat: Text.StyledText
+      text: Model.boldTime(root.displayText)
       color: button.foreground
       font.family: button.fontFamily
       font.pixelSize: button.fontSize
-      font.bold: true
       renderType: Text.NativeRendering
     }
 
