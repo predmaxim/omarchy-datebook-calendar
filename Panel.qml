@@ -1376,6 +1376,7 @@ Panel {
                     anchors.verticalCenter: parent.verticalCenter
                     textFormat: Text.PlainText
                     text: eventRow.modelData.label
+                    rightPadding: Style.space(10)
                     color: Qt.darker(root.contentForeground, 1.5)
                     font.family: root.contentFontFamily
                     font.pixelSize: Style.font.bodySmall
