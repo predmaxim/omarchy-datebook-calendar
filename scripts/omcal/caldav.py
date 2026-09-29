@@ -10,13 +10,13 @@ reply naming any other place (an href on another host) is refused, not
 followed.
 
 Reading asks the server to expand recurring events into occurrences for the
-sync window (calendar-query with <C:expand>), so no RRULE is evaluated here.
-Yandex ignores that and sends each series as its rule plus its exceptions:
-until RRULE expansion lands here, such a series shows only its moved or edited
-occurrences. The cursor is a fingerprint of the calendar's objects and their
-ETags (Yandex's getctag doesn't move on edits): unchanged, the calendar isn't
-read again (Yandex rate-limits hard); changed, it is read whole, as CalDAV has
-no cheap delta like Graph's.
+sync window (calendar-query with <C:expand>). Yandex ignores that and sends
+each series as its rule plus its exceptions, so a rule is expanded here
+(ical.occurrences) around the moved or edited occurrences. The cursor is a
+fingerprint of the calendar's objects and their ETags (Yandex's getctag
+doesn't move on edits): unchanged, the calendar isn't read again (Yandex
+rate-limits hard); changed, it is read whole, as CalDAV has no cheap delta
+like Graph's.
 
 Writing edits the event's own iCalendar object and puts it back guarded by
 its ETag, so a change made elsewhere since the last sync is never
@@ -227,18 +227,41 @@ def fetch(account, tok, cal, window, cursor=None):
             vevents = ical.parse(data).find("VEVENT")
         except ValueError:
             continue
+        etag = _text(p.get(tag("d", "getetag")))
+        try:
+            vevents = _expand(vevents, window)
+        except (ValueError, TypeError, AttributeError, KeyError):
+            vevents = [ve for ve in vevents if ve.get("RRULE") is None]   # its exceptions still show
         for ve in vevents:
-            if ve.get("RRULE") is not None or ve.get("RDATE") is not None:
-                # ponytail: a series the server didn't expand (Yandex ignores
-                # <C:expand>) shows only its moved or edited occurrences, which
-                # arrive as VEVENTs of their own. Expanding RRULE here (weekly
-                # BYDAY/INTERVAL, EXDATE, zoneinfo) is the upgrade path.
-                continue
+            if ve.get("RDATE") is not None:
+                continue   # ponytail: an RDATE-only series shows only its exceptions
             try:
-                events.append(normalise(account, cal, tok, href, _text(p.get(tag("d", "getetag"))), ve))
+                e = normalise(account, cal, tok, href, etag, ve)
             except (ValueError, TypeError, AttributeError):
                 continue   # an event this reader can't place is skipped; the rest still show
+            if e["end"] > window[0]:
+                events.append(e)
     return events, [], now
+
+
+def _expand(vevents, window):
+    """The object's VEVENTs with each series replaced by its occurrences in the window.
+
+    An occurrence that has an exception (moved, edited) is left to it. A rule
+    ical.occurrences can't read drops the series, keeping its exceptions.
+    """
+    moved = {ical.stamp(ical.instant(ve.get("RECURRENCE-ID")))[0] for ve in vevents
+             if ve.get("RECURRENCE-ID") is not None}
+    until = datetime.strptime(window[1], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    out = []
+    for ve in vevents:
+        if ve.get("RRULE") is None or ve.get("RECURRENCE-ID") is not None:
+            out.append(ve)
+            continue
+        for when in ical.occurrences(ve, until) or []:
+            if ical.stamp(when)[0] not in moved:
+                out.append(_instance(ve, when))
+    return out
 
 
 def _addr(p):
@@ -454,7 +477,13 @@ def _occurrence(vcal, rid):
     series = ical.master(vcal)
     if series is None:
         raise auth.HttpError("caldav", 404, "the series of this occurrence is gone")
-    when = ical.from_key(rid)
+    ve = _instance(series, ical.from_key(rid))
+    vcal.children.append(ve)
+    return ve
+
+
+def _instance(series, when):
+    """The series' occurrence at `when` as a VEVENT of its own, without the rule."""
     start = series.get("DTSTART")
     ve = ical.Component("VEVENT",
                         [ical.Prop(p.name, p.value, p.params) for p in series.props
@@ -465,7 +494,6 @@ def _occurrence(vcal, rid):
     if series.get("DTEND") is not None:
         length = ical.instant(series.get("DTEND")) - ical.instant(start)
         ve.add("DTEND", *ical.stamp(when + length, series.get("DTEND")))
-    vcal.children.append(ve)
     return ve
 
 
