@@ -688,7 +688,7 @@ Panel {
                   ? Style.hoverStateColor(root.contentForeground, Color.accent)
                   : root.contentForeground
                 font.family: root.contentFontFamily
-                font.pixelSize: 44
+                font.pixelSize: 38
               }
             }
 
