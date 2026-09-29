@@ -1396,16 +1396,6 @@ Panel {
                     onClicked: root.snooze(eventRow.modelData)
                   }
 
-                  AnswerPicker {
-                    anchors.verticalCenter: parent.verticalCenter
-                    event: eventRow.modelData
-                    busy: root.writingUid !== ""
-                    foreground: root.contentForeground
-                    fontFamily: root.contentFontFamily
-                    tr: root.tr
-                    onRespond: function(a) { root.respond(eventRow.modelData, a, eventRow.modelData.recurring) }
-                  }
-
                   Button {
                     id: joinButton
                     bordered: true
