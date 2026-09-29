@@ -649,9 +649,12 @@ Panel {
           // ---- Hero: today, centered. Once the view has stepped back
           //      it is also the way home — clicking the date you are
           //      looking for beats hunting for a reset button.
+          // Only the date sets the height: the button column at the right
+          // hangs down past it, beside the year bar and the grid, rather
+          // than pushing the calendar down.
           Item {
             width: parent.width
-            height: Math.max(heroRow.height, heroButtons.height)
+            height: heroRow.height
 
             Row {
               id: heroRow
