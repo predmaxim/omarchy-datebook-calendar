@@ -4,7 +4,7 @@ const fs = require("fs")
 const path = require("path")
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8")
 const M = new Function(src + "; return { nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english," +
-  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText }")()
+  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar }")()
 const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "I18n.js"), "utf8").replace(/^\.pragma.*$/m, "")
 const I = new Function(i18nSrc + "; return { translator, textLanguage, formatLocaleName, TABLES }")()
 
@@ -98,6 +98,11 @@ eq(M.cardWhen({ start: new Date(2026, 8, 29, 23, 0).toISOString(), end: new Date
 eq(M.cardWhen({ start: "2026-10-05", end: "2026-10-06" }, true, en, RU), "Понедельник, 5 октября · All day", "cardWhen: all day")
 eq(M.cardWhen({ start: "2026-10-05", end: "2026-10-08" }, true, ru, RU),
    "Понедельник, 5 октября – Среда, 7 октября · Весь день", "cardWhen: several days, last day inclusive")
+const copies = M.indexEvents({ calendars: [{ account: "a", id: "c", name: "Мои события", shown: true }],
+  events: [{ uid: "a/c/1", account: "a", calendar: "c", title: "T", allDay: true, start: "2026-10-05", end: "2026-10-06",
+             status: "confirmed", recurring: true, alsoIn: ["Google: Work"] }] }, true, en).byDay["2026-10-05"][0]
+eq(M.cardCalendar(copies, en), "Мои события  ·  repeats  ·  also in Google: Work", "cardCalendar: repeats and copies")
+eq(M.cardCalendar({ calendarName: "Мои события", recurring: false }, ru), "Мои события", "cardCalendar: just the calendar")
 eq(["organizer", "accepted", "tentative", "declined", "needsAction", "none"].map(r => M.responseText({ response: r, organizer: r === "organizer" }, en)),
    ["You organise it", "You accepted", "You said maybe", "You declined", "Not answered yet", ""], "responseText")
 

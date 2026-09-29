@@ -99,7 +99,7 @@ BarWidget {
   // dot takes the label width; vertically it is a stack of icon-sized lines,
   // so the dot takes one line — the same mark every icon widget gets, rather
   // than a rule running the height of the whole stack.
-  readonly property real openPanelIndicatorWidth: button.labelWidth
+  readonly property real openPanelIndicatorWidth: root.vertical ? 0 : boldLabel.implicitWidth
   readonly property real openPanelIndicatorHeight: Math.max(Style.space(10), Math.round(Style.bar.iconSlot * 0.55))
 
   // Forwarded so this widget can stand in for the panel as the bar's popout
