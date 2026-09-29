@@ -1,6 +1,7 @@
 .pragma library
 // Interface text in other languages, keyed by the English text itself, so a
-// string missing from a table simply shows in English. tr("In %1 min", 5)
+// string missing from a table simply shows in English. Day and month names
+// aren't here: they come from the format locale (see Model.js). tr("In %1 min", 5)
 // fills in %1, %2… after the lookup. Qt's qsTr isn't used: Quickshell plugins
 // get no .qm catalogues. Kept Qt-free so it runs under node (tests/model.test.js).
 
@@ -65,36 +66,33 @@ var TABLES = {
     "Open in %1": "Открыть в %1", "Google Calendar": "Google Календаре",
     "Yandex Calendar": "Яндекс Календаре", "Outlook": "Outlook",
     "Cancel": "Отмена", "Close": "Закрыть", "Saving…": "Сохранение…", "Create": "Создать", "Save": "Сохранить",
-    // Checks on what was typed
-    "The start date should look like 2026-10-02.": "Дата начала — в виде 2026-10-02.",
-    "The end date should look like 2026-10-02.": "Дата окончания — в виде 2026-10-02.",
-    "The last day can't be before the first.": "Последний день не может быть раньше первого.",
-    "The start time should look like 14:30 or 2:30pm.": "Время начала — в виде 14:30.",
-    "The end time should look like 15:30 or 3:30pm.": "Время окончания — в виде 15:30.",
-    "The end can't be before the start.": "Окончание не может быть раньше начала.",
-    "Pick a calendar.": "Выберите календарь.", "%1 isn't an email address.": "%1 — не адрес почты.",
-    "A whole series can't be moved from here: untick it to move this one.":
-      "Всю серию отсюда не перенести: снимите галочку, чтобы перенести этот повтор.",
-    // Names Model.js spells out
-    "Sunday": "воскресенье", "Monday": "понедельник", "Tuesday": "вторник", "Wednesday": "среда",
-    "Thursday": "четверг", "Friday": "пятница", "Saturday": "суббота",
-    "Sun": "вс", "Mon": "пн", "Tue": "вт", "Wed": "ср", "Thu": "чт", "Fri": "пт", "Sat": "сб",
-    "Jan": "янв", "Feb": "фев", "Mar": "мар", "Apr": "апр", "May": "мая", "Jun": "июн",
-    "Jul": "июл", "Aug": "авг", "Sep": "сен", "Oct": "окт", "Nov": "ноя", "Dec": "дек"
+    // The event card
+    "EVENT": "СОБЫТИЕ", "You organise it": "Вы организатор", "You accepted": "Вы приняли",
+    "You said maybe": "Вы ответили «может быть»", "You declined": "Вы отклонили",
+    "Not answered yet": "Вы ещё не ответили", "Open in Web": "Открыть в браузере"
   }
 }
 
-function language(setting, localeName) {
-  var wanted = [setting, localeName]
-  for (var i = 0; i < wanted.length; i++) {
-    var l = String(wanted[i] || "").slice(0, 2).toLowerCase()
-    if (TABLES[l]) return l
+// The text language and the format locale, split as the system splits them:
+// text follows LC_MESSAGES, dates LC_TIME, both overridden by LC_ALL and
+// defaulting to LANG. env is name -> value (Quickshell.env in QML).
+function localeVar(env, category) {
+  var names = ["LC_ALL", category, "LANG"]
+  for (var i = 0; i < names.length; i++) {
+    var v = String(env(names[i]) || "").split(".")[0].split("@")[0]
+    if (v && v !== "C" && v !== "POSIX") return v
   }
-  return "en"
+  return "en_US"
 }
 
-function localeName(lang) {
-  return ({ ru: "ru_RU" })[lang] || "en_US"
+// A language with a table in TABLES, else English.
+function textLanguage(env) {
+  var l = localeVar(env, "LC_MESSAGES").slice(0, 2).toLowerCase()
+  return TABLES[l] ? l : "en"
+}
+
+function formatLocaleName(env) {
+  return localeVar(env, "LC_TIME")
 }
 
 function translator(lang) {
