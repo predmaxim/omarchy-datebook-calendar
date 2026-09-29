@@ -4,7 +4,7 @@ const fs = require("fs")
 const path = require("path")
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8")
 const M = new Function(src + "; return { nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english," +
-  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar }")()
+  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify }")()
 const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "I18n.js"), "utf8").replace(/^\.pragma.*$/m, "")
 const I = new Function(i18nSrc + "; return { translator, textLanguage, formatLocaleName, TABLES }")()
 
@@ -103,6 +103,11 @@ const copies = M.indexEvents({ calendars: [{ account: "a", id: "c", name: "Мо�
              status: "confirmed", recurring: true, alsoIn: ["Google: Work"] }] }, true, en).byDay["2026-10-05"][0]
 eq(M.cardCalendar(copies, en), "Мои события  ·  repeats  ·  also in Google: Work", "cardCalendar: repeats and copies")
 eq(M.cardCalendar({ calendarName: "Мои события", recurring: false }, ru), "Мои события", "cardCalendar: just the calendar")
+eq(M.linkify("Zoom: https://zoom.us/j/1?pwd=a&b=2, room <5>"),
+   'Zoom: <a href="https://zoom.us/j/1?pwd=a&amp;b=2">https://zoom.us/j/1?pwd=a&amp;b=2</a>, room &lt;5&gt;', "linkify: https link, text escaped, trailing comma left out")
+eq(M.linkify("http://x.ru and javascript:alert(1) and \"https://a.ru/x\"."),
+   'http://x.ru and javascript:alert(1) and &quot;<a href="https://a.ru/x">https://a.ru/x</a>&quot;.', "linkify: only https, quotes and dot outside")
+eq(M.linkify(""), "", "linkify: empty")
 eq(["organizer", "accepted", "tentative", "declined", "needsAction", "none"].map(r => M.responseText({ response: r, organizer: r === "organizer" }, en)),
    ["You organise it", "You accepted", "You said maybe", "You declined", "Not answered yet", ""], "responseText")
 

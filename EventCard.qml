@@ -28,13 +28,20 @@ Item {
 
   onEventChanged: if (event) Qt.callLater(function() { body.forceActiveFocus() })
 
+  // A line of the card: plain text, with its https links clickable.
   component Line: Text {
+    property string plain: ""
     width: parent.width
     wrapMode: Text.WordWrap
-    textFormat: Text.PlainText
+    textFormat: Text.StyledText
+    text: Model.linkify(plain)
+    linkColor: Color.accent
     color: card.foreground
     font.family: card.fontFamily
     font.pixelSize: Style.font.body
+    onLinkActivated: function(link) { card.openLink(link) }
+
+    HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
   }
 
   Column {
@@ -60,26 +67,26 @@ Item {
     }
 
     Line {
-      text: card.event ? card.event.title : ""
+      plain: card.event ? card.event.title : ""
       font.pixelSize: Style.font.title
       font.bold: true
     }
 
-    Line { text: card.event ? Model.cardWhen(card.event, card.use24h, card.tr, card.labelLocale) : "" }
+    Line { plain: card.event ? Model.cardWhen(card.event, card.use24h, card.tr, card.labelLocale) : "" }
 
     Line {
-      text: card.event ? Model.cardCalendar(card.event, card.tr) : ""
+      plain: card.event ? Model.cardCalendar(card.event, card.tr) : ""
       color: Qt.darker(card.foreground, 1.4)
     }
 
     Line {
-      visible: text !== ""
-      text: card.event ? String(card.event.location || "") : ""
+      visible: plain !== ""
+      plain: card.event ? String(card.event.location || "") : ""
     }
 
     Line {
-      visible: text !== ""
-      text: card.event ? [Model.responseText(card.event, card.tr), card.tr(card.event.busy ? "Busy" : "Free")]
+      visible: plain !== ""
+      plain: card.event ? [Model.responseText(card.event, card.tr), card.tr(card.event.busy ? "Busy" : "Free")]
                            .filter(function(s) { return s }).join("  ·  ") : ""
       color: Qt.darker(card.foreground, 1.4)
     }
