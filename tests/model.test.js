@@ -4,7 +4,7 @@ const fs = require("fs")
 const path = require("path")
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8")
 const M = new Function(src + "; return { nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english," +
-  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify }")()
+  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify, answerLabel }")()
 const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "I18n.js"), "utf8").replace(/^\.pragma.*$/m, "")
 const I = new Function(i18nSrc + "; return { translator, textLanguage, formatLocaleName, TABLES }")()
 
@@ -108,6 +108,9 @@ eq(M.linkify("Zoom: https://zoom.us/j/1?pwd=a&b=2, room <5>"),
 eq(M.linkify("http://x.ru and javascript:alert(1) and \"https://a.ru/x\"."),
    'http://x.ru and javascript:alert(1) and &quot;<a href="https://a.ru/x">https://a.ru/x</a>&quot;.', "linkify: only https, quotes and dot outside")
 eq(M.linkify(""), "", "linkify: empty")
+eq(["accepted", "tentative", "declined", "needsAction"].map(r => M.answerLabel({ response: r }, en)),
+   ["Accepted", "Maybe", "Declined", "Choose"], "answerLabel: the answer made, else Choose")
+eq(M.answerLabel({ response: "declined" }, ru), "Отклонено", "answerLabel: ru")
 eq(["organizer", "accepted", "tentative", "declined", "needsAction", "none"].map(r => M.responseText({ response: r, organizer: r === "organizer" }, en)),
    ["You organise it", "You accepted", "You said maybe", "You declined", "Not answered yet", ""], "responseText")
 

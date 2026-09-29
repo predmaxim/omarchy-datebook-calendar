@@ -738,6 +738,12 @@ function cardCalendar(row, tr) {
   return parts.join("  ·  ")
 }
 
+// The card's answer button: the answer made, or Choose when there is none yet.
+function answerLabel(row, tr) {
+  tr = tr || english
+  return ({ accepted: tr("Accepted"), tentative: tr("Maybe"), declined: tr("Declined") })[row.response] || tr("Choose")
+}
+
 // This account's part in it; "" when it isn't on the guest list.
 function responseText(row, tr) {
   tr = tr || english
@@ -792,6 +798,7 @@ if (typeof module !== "undefined") {
     cardWhen: cardWhen,
     cardCalendar: cardCalendar,
     linkify: linkify,
+    answerLabel: answerLabel,
     responseText: responseText
   }
 }
