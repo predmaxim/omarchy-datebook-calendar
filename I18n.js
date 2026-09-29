@@ -51,7 +51,8 @@ var TABLES = {
     // The event card
     "EVENT": "СОБЫТИЕ", "You organise it": "Вы организатор", "You accepted": "Вы приняли",
     "You said maybe": "Вы ответили «может быть»", "You declined": "Вы отклонили",
-    "Not answered yet": "Вы ещё не ответили", "Open in Web": "Открыть в браузере", "also in %1": "также в %1"
+    "Not answered yet": "Вы ещё не ответили", "Open in Web": "Открыть в браузере", "also in %1": "также в %1",
+    "Accepted": "Принято", "Declined": "Отклонено", "Choose": "Выбрать"
   }
 }
 
