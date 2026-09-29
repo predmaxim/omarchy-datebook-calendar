@@ -107,6 +107,7 @@ Item {
         tooltipText: layout.tr(layout.p && layout.p.syncing ? "Syncing…" : "Sync now")
         foreground: layout.fg
         fontFamily: layout.fontName
+        fontSize: Style.font.display
         onClicked: layout.p.syncNow()
       }
 
@@ -116,6 +117,7 @@ Item {
         tooltipText: layout.tr("Compact: Omarchy's month and the day's appointments")
         foreground: layout.fg
         fontFamily: layout.fontName
+        fontSize: Style.font.display
         onClicked: layout.p.setLayout(false)
       }
     }

@@ -76,9 +76,9 @@ const RU = {
 // Text through tr, names through the format locale.
 by[k] = [{ title: "soon", start: at(10, 0), end: at(10, 30) }]; delete by[M.addDays(k, 1)]
 eq(M.nextUp(by, now, true, ru, RU).when, "Через 10 мин", "nextUp: ru")
-eq(M.rangeTitle("week", "2026-10-07", 1, ru, RU), "Неделя 41 · 5 окт – 11 окт", "rangeTitle: ru week")
-eq(M.rangeTitle("week", "2026-10-07", 1, en, RU), "Week 41 · 5 окт – 11 окт", "rangeTitle: English text, Russian months")
-eq(M.rangeTitle("week", "2026-10-07", 1), "Week 41 · 5 Oct – 11 Oct", "rangeTitle: English as before")
+eq(M.rangeTitle("week", "2026-10-07", 1, ru, RU), "5 окт – 11 окт", "rangeTitle: week, no week number")
+eq(M.rangeTitle("workweek", "2026-10-07", 1, en, RU), "5 окт – 9 окт", "rangeTitle: working week, Russian months")
+eq(M.rangeTitle("week", "2026-10-07", 1), "5 Oct – 11 Oct", "rangeTitle: English months without a locale")
 eq(M.rangeTitle("day", "2026-10-07", 1, en, RU), "среда 7 окт 2026", "rangeTitle: day in the format locale")
 by[k] = []; by[M.addDays(k, 3)] = [{ title: "t", start: at(14, 30, 3), end: at(15, 0, 3) }]
 eq(M.nextUp(by, now, true, en, RU).when, "чт · 14:30", "nextUp: weekday from the format locale")
