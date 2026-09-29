@@ -25,7 +25,7 @@ var TABLES = {
     "All day": "Весь день", "from %1": "с %1", "until %1": "до %1", "+%1 more": "ещё %1",
     "repeats": "повторяется",
     "Choose calendars": "Выбрать календари", "Pick which calendars to show": "Какие календари показывать",
-    "Sync": "Синхронизировать", "Sync now": "Синхронизировать сейчас", "Syncing…": "Синхронизация…",
+    "Sync now": "Синхронизировать сейчас", "Syncing…": "Синхронизация…",
     "sign-in needed": "нужен вход", "offline": "нет сети", "couldn't sync": "не удалось синхронизировать",
     "sign-in needed (calendar-ctl add-%1 %2 …)": "нужен вход (calendar-ctl add-%1 %2 …)",
     "offline, showing the last copy": "нет сети, показана последняя копия",
