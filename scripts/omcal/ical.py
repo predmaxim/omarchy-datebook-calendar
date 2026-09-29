@@ -204,3 +204,51 @@ def from_key(key):
 def master(vcal):
     """The VEVENT that isn't an exception: a single event, or a series' rule."""
     return next((v for v in vcal.find("VEVENT") if v.get("RECURRENCE-ID") is None), None)
+
+
+_DAYS = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+_RULE_PARTS = {"FREQ", "INTERVAL", "COUNT", "UNTIL", "BYDAY", "WKST"}
+
+
+def _aware(when):
+    return when if isinstance(when, datetime) else datetime(when.year, when.month, when.day, tzinfo=timezone.utc)
+
+
+def occurrences(ve, until):
+    """The start of every occurrence of ve's RRULE before `until` (aware), without its EXDATEs.
+
+    Steps day by day from DTSTART in the event's own wall time, so an
+    occurrence keeps its hour across a DST change. None for a rule this
+    doesn't read. ponytail: DAILY and WEEKLY with BYDAY/INTERVAL/COUNT/UNTIL
+    only (every series Yandex gave so far); MONTHLY, YEARLY, BYSETPOS and RDATE
+    are the upgrade path, their series show only their exceptions meanwhile.
+    """
+    rule = dict(part.split("=", 1) for part in ve.get("RRULE").value.upper().split(";") if "=" in part)
+    days = [d for d in rule.get("BYDAY", "").split(",") if d]
+    if rule.get("FREQ") not in ("DAILY", "WEEKLY") or set(rule) - _RULE_PARTS \
+            or any(d not in _DAYS for d in days + [rule.get("WKST", "MO")]):
+        return None
+    start = instant(ve.get("DTSTART"))
+    first = start.date() if isinstance(start, datetime) else start
+    step = max(1, int(rule.get("INTERVAL", "1")))
+    count = int(rule["COUNT"]) if "COUNT" in rule else None
+    last = _aware(instant(Prop("UNTIL", rule["UNTIL"]))) if "UNTIL" in rule else None
+    weekdays = {_DAYS.index(d) for d in days} or ({first.weekday()} if rule["FREQ"] == "WEEKLY" else set(range(7)))
+    wkst = _DAYS.index(rule.get("WKST", "MO"))
+    week0 = first - timedelta(days=(first.weekday() - wkst) % 7)
+    skip = {stamp(instant(Prop("EXDATE", v, p.params)))[0] for p in ve.all("EXDATE") for v in p.value.split(",")}
+    out, n, i = [], 0, 0
+    while True:
+        when = start + timedelta(days=i)
+        i += 1
+        if _aware(when) >= until or last is not None and _aware(when) > last:
+            return out
+        day = first + timedelta(days=i - 1)
+        period = (day - first).days if rule["FREQ"] == "DAILY" else (day - week0).days // 7
+        if day.weekday() not in weekdays or period % step:
+            continue
+        n += 1
+        if count is not None and n > count:
+            return out
+        if stamp(when)[0] not in skip:
+            out.append(when)
