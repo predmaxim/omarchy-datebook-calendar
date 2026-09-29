@@ -423,7 +423,7 @@ function indexEvents(data, use24h, tr) {
         allDay: e.allDay || !!day.allDay, start: e.start, end: e.end,
         organizer: !!e.organizer, recurring: !!e.recurring,
         calendar: e.calendar, editable: !!e.editable && !!cinfo.editable,
-        busy: e.busy !== false
+        busy: e.busy !== false, alsoIn: e.alsoIn || []
       })
     }
   }
@@ -711,6 +711,15 @@ function cardWhen(row, use24h, tr, locale) {
   return dateLabel(s, locale) + " " + clockLabel(s, use24h) + " – " + dateLabel(e, locale) + " " + clockLabel(e, use24h)
 }
 
+// Which calendar, whether it repeats, and where else the same event is.
+function cardCalendar(row, tr) {
+  tr = tr || english
+  var parts = [row.calendarName]
+  if (row.recurring) parts.push(tr("repeats"))
+  if (row.alsoIn && row.alsoIn.length) parts.push(tr("also in %1", row.alsoIn.join(", ")))
+  return parts.join("  ·  ")
+}
+
 // This account's part in it; "" when it isn't on the guest list.
 function responseText(row, tr) {
   tr = tr || english
@@ -763,6 +772,7 @@ if (typeof module !== "undefined") {
     nextUp: nextUp,
     dateLabel: dateLabel,
     cardWhen: cardWhen,
+    cardCalendar: cardCalendar,
     responseText: responseText
   }
 }

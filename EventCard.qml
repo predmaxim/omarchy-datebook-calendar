@@ -68,7 +68,7 @@ Item {
     Line { text: card.event ? Model.cardWhen(card.event, card.use24h, card.tr, card.labelLocale) : "" }
 
     Line {
-      text: card.event ? card.event.calendarName + (card.event.recurring ? "  ·  " + card.tr("repeats") : "") : ""
+      text: card.event ? Model.cardCalendar(card.event, card.tr) : ""
       color: Qt.darker(card.foreground, 1.4)
     }
 
