@@ -18,8 +18,9 @@ doesn't move on edits): unchanged, the calendar isn't read again (Yandex
 rate-limits hard); changed, it is read whole, as CalDAV has no cheap delta
 like Graph's.
 
-Writing edits the event's own iCalendar object and puts it back guarded by
-its ETag, so a change made elsewhere since the last sync is never
+The one write is this account's answer to an invitation: the event's own
+iCalendar object is read, its ATTENDEE's PARTSTAT changed, and it is put back
+guarded by its ETag, so a change made elsewhere since the last sync is never
 overwritten. Yandex sometimes answers a write with 504 after making it, so a
 504 is followed by a read before anything is sent again.
 """
@@ -31,7 +32,6 @@ import posixpath
 import urllib.error
 import urllib.parse
 import urllib.request
-import uuid
 import xml.etree.ElementTree as ET
 from base64 import b64encode
 from datetime import datetime, timedelta, timezone
@@ -400,10 +400,6 @@ def _put(tok, href, vcal, guard):
     return etag
 
 
-def _now():
-    return datetime.now(timezone.utc)
-
-
 def _modify(tok, href, etag, change):
     """Read the object, check it's the version the local copy came from, change it, put it back.
 
@@ -426,41 +422,6 @@ def _modify(tok, href, etag, change):
                 raise auth.Conflict("the event was deleted elsewhere")
             if again[1] != current:
                 return again[1]
-
-
-def create(tok, cal, title, start, end, all_day, location="", invite=(), busy=True):
-    """A new event in cal, inviting whoever is in invite. Returns (href, etag, VEVENT).
-
-    Guests are written as ATTENDEEs with this account as ORGANIZER; the
-    server sends the invitations. all_day is carried by start/end being dates.
-    """
-    uid = str(uuid.uuid4())
-    href = cal["id"].rstrip("/") + "/" + uid + ".ics"
-    ve = ical.Component("VEVENT")
-    ve.add("UID", uid)
-    ve.add("DTSTAMP", *ical.stamp(_now()))
-    ve.add("SUMMARY", ical.escape(title))
-    ve.add("DTSTART", *ical.stamp(start))
-    ve.add("DTEND", *ical.stamp(end))
-    ve.add("TRANSP", "OPAQUE" if busy else "TRANSPARENT")
-    if location:
-        ve.add("LOCATION", ical.escape(location))
-    if invite:
-        ve.add("ORGANIZER", "mailto:" + tok["email"])
-        ve.add("ATTENDEE", "mailto:" + tok["email"], {"PARTSTAT": "ACCEPTED", "ROLE": "CHAIR"})
-        for m in invite:
-            ve.add("ATTENDEE", "mailto:" + m, {"PARTSTAT": "NEEDS-ACTION", "RSVP": "TRUE", "ROLE": "REQ-PARTICIPANT"})
-    vcal = ical.Component("VCALENDAR", [ical.Prop("VERSION", "2.0"),
-                                        ical.Prop("PRODID", "-//blacksheep//Datebook//EN")], [ve])
-    for attempt in (1, 2):
-        try:
-            return href, _put(tok, href, vcal, {"If-None-Match": "*"}), ve
-        except auth.HttpError as e:
-            if e.code != 504 or attempt == 2:
-                raise
-            again = _exists(tok, href)
-            if again is not None:
-                return href, again[1], ve
 
 
 def _occurrence(vcal, rid):
@@ -495,69 +456,6 @@ def _instance(series, when):
         length = ical.instant(series.get("DTEND")) - ical.instant(start)
         ve.add("DTEND", *ical.stamp(when + length, series.get("DTEND")))
     return ve
-
-
-def _set(ve, fields):
-    if "title" in fields:
-        ve.set("SUMMARY", ical.escape(fields["title"]))
-    if "location" in fields:
-        if fields["location"]:
-            ve.set("LOCATION", ical.escape(fields["location"]))
-        else:
-            ve.remove("LOCATION")
-    if "busy" in fields:
-        ve.set("TRANSP", "OPAQUE" if fields["busy"] else "TRANSPARENT")
-    if "start" in fields:
-        ve.set("DTSTART", *ical.stamp(fields["start"]))
-        ve.set("DTEND", *ical.stamp(fields["end"]))
-        ve.remove("DURATION")
-    seq = ve.get("SEQUENCE")
-    ve.set("SEQUENCE", str(int(seq.value) + 1 if seq is not None and seq.value.strip().isdigit() else 1))
-    ve.set("DTSTAMP", *ical.stamp(_now()))
-
-
-def update(tok, href, etag, rid, fields, series=False):
-    """Change title, location, busy or start/end. Returns the new ETag.
-
-    rid None: the single event, or with series every VEVENT in the object (the
-    series and its exceptions). rid set: that occurrence only, as an exception.
-    """
-    def change(vcal):
-        if rid:
-            targets = [_occurrence(vcal, rid)]
-        elif series:
-            targets = vcal.find("VEVENT")
-        else:
-            targets = [ical.master(vcal) or vcal.find("VEVENT")[0]]
-        for ve in targets:
-            _set(ve, fields)
-    return _modify(tok, href, etag, change)
-
-
-def delete(tok, href, etag, rid=None):
-    """The whole object (an event, or a series with its exceptions), or with rid one
-    occurrence (then the object's new ETag is returned)."""
-    if rid:
-        def change(vcal):
-            series = ical.master(vcal)
-            if series is None:
-                raise auth.HttpError("caldav", 404, "the series of this occurrence is gone")
-            series.add("EXDATE", *ical.stamp(ical.from_key(rid), series.get("DTSTART")))
-            vcal.children = [c for c in vcal.children if not (
-                c.name == "VEVENT" and c.get("RECURRENCE-ID") is not None
-                and ical.stamp(ical.instant(c.get("RECURRENCE-ID")))[0] == rid)]
-        return _modify(tok, href, etag, change)
-    for attempt in (1, 2):
-        try:
-            request(tok, "DELETE", href, None, {"If-Match": etag} if etag else {})
-            return
-        except auth.HttpError as e:
-            if e.code == 404:
-                return   # already gone
-            if e.code != 504 or attempt == 2:
-                raise
-            if _exists(tok, href) is None:
-                return
 
 
 def respond(tok, href, etag, rid, answer, series=False):
