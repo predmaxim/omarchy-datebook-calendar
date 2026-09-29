@@ -7,7 +7,6 @@ import sys
 import tempfile
 import time
 import unittest
-from datetime import date, datetime, timezone
 from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
@@ -232,6 +231,8 @@ ONE = "/calendars/me%40astral.ru/events-default/single.ics"
 
 
 class Writes(unittest.TestCase):
+    """The one write left: this account's answer to an invitation."""
+
     def setUp(self):
         self.srv = FakeServer({HREF: (SERIES, '"s1"'), ONE: (SINGLE, '"e1"')})
         patcher = mock.patch.object(caldav, "request", self.srv)
@@ -242,73 +243,36 @@ class Writes(unittest.TestCase):
         from omcal import ical
         return ical.parse(self.srv.objects[path][0]).find("VEVENT")
 
-    def test_update_single_event(self):
-        caldav.update(TOK, ONE, '"e1"', None, {"title": "Новое, название", "busy": True})
+    def mine(self, ev):
+        return [g for g in ev.all("ATTENDEE") if g.value == "mailto:me@astral.ru"][0]
+
+    def test_respond_to_a_single_event(self):
+        caldav.respond(TOK, ONE, '"e1"', None, "tentative")
         (ev,) = self.vevents(ONE)
-        from omcal import ical
-        self.assertEqual(ical.text(ev.get("SUMMARY")), "Новое, название")
-        self.assertEqual((ev.get("TRANSP").value, ev.get("SEQUENCE").value), ("OPAQUE", "1"))
+        self.assertEqual(self.mine(ev).params, {"PARTSTAT": "TENTATIVE"})
         self.assertEqual(ev.get("X-TELEMOST-CONFERENCE").value, "https://telemost.yandex.ru/j/12345678901234")
         self.assertEqual(self.srv.puts()[0][2]["If-Match"], '"e1"')
 
     def test_put_without_etag_reads_the_new_one(self):
         self.srv.etag_on_put = False
-        etag = caldav.update(TOK, ONE, '"e1"', None, {"title": "x"})
+        etag = caldav.respond(TOK, ONE, '"e1"', None, "accept")
         self.assertEqual(etag, self.srv.objects[ONE][1])
-        caldav.update(TOK, ONE, etag, None, {"title": "y"})   # the next edit isn't a conflict
+        caldav.respond(TOK, ONE, etag, None, "decline")   # the next answer isn't a conflict
 
     def test_stale_local_copy_is_a_conflict(self):
         with self.assertRaises(auth.Conflict):
-            caldav.update(TOK, ONE, '"old"', None, {"title": "x"})
+            caldav.respond(TOK, ONE, '"old"', None, "accept")
         self.assertEqual(self.srv.puts(), [])
 
-    def test_edit_one_occurrence_makes_an_exception(self):
-        caldav.update(TOK, HREF, '"s1"', "20261006T070000Z", {"title": "Only this"})
+    def test_respond_for_one_occurrence(self):
+        caldav.respond(TOK, HREF, '"s1"', "20261006T070000Z", "accept")
         evs = self.vevents(HREF)
         self.assertEqual(len(evs), 3)
         new = evs[-1]
         self.assertEqual((new.get("RECURRENCE-ID").value, new.get("RECURRENCE-ID").params),
                          ("20261006T100000", {"TZID": "Europe/Moscow"}))
-        self.assertEqual((new.get("DTSTART").value, new.get("DTEND").value), ("20261006T100000", "20261006T103000"))
         self.assertIsNone(new.get("RRULE"))
-        self.assertEqual(len(new.find("VALARM")), 1)
-        self.assertEqual(new.get("SUMMARY").value, "Only this")
-        self.assertEqual(evs[0].get("SUMMARY").value, "Standup")
-
-    def test_edit_an_existing_exception(self):
-        caldav.update(TOK, HREF, '"s1"', "20261007T070000Z", {"location": "Zoom"})
-        evs = self.vevents(HREF)
-        self.assertEqual(len(evs), 2)
-        self.assertEqual(evs[1].get("LOCATION").value, "Zoom")
-
-    def test_move_one_occurrence(self):
-        s = datetime(2026, 10, 6, 9, 0, tzinfo=timezone.utc)
-        caldav.update(TOK, HREF, '"s1"', "20261006T070000Z", {"start": s, "end": s.replace(hour=10)})
-        new = self.vevents(HREF)[-1]
-        self.assertEqual((new.get("DTSTART").value, new.get("DTEND").value), ("20261006T090000Z", "20261006T100000Z"))
-        self.assertEqual(new.get("RECURRENCE-ID").value, "20261006T100000")
-
-    def test_series_title_changes_every_vevent(self):
-        caldav.update(TOK, HREF, '"s1"', None, {"title": "Team sync"}, series=True)
-        self.assertEqual([e.get("SUMMARY").value for e in self.vevents(HREF)], ["Team sync", "Team sync"])
-
-    def test_delete_one_occurrence(self):
-        caldav.delete(TOK, HREF, '"s1"', "20261007T070000Z")
-        evs = self.vevents(HREF)
-        self.assertEqual(len(evs), 1)
-        ex = evs[0].get("EXDATE")
-        self.assertEqual((ex.value, ex.params), ("20261007T100000", {"TZID": "Europe/Moscow"}))
-
-    def test_delete_whole_object(self):
-        caldav.delete(TOK, HREF, '"s1"')
-        self.assertNotIn(HREF, self.srv.objects)
-        self.assertEqual(self.srv.calls[-1][2], {"If-Match": '"s1"'})
-
-    def test_respond_for_one_occurrence(self):
-        caldav.respond(TOK, HREF, '"s1"', "20261006T070000Z", "accept")
-        evs = self.vevents(HREF)
-        mine = [g for g in evs[-1].all("ATTENDEE") if g.value == "mailto:me@astral.ru"][0]
-        self.assertEqual(mine.params, {"PARTSTAT": "ACCEPTED"})
+        self.assertEqual(self.mine(new).params, {"PARTSTAT": "ACCEPTED"})
         self.assertEqual(evs[0].all("ATTENDEE")[0].params["PARTSTAT"], "NEEDS-ACTION")
 
     def test_respond_for_the_series(self):
@@ -321,50 +285,21 @@ class Writes(unittest.TestCase):
             caldav.respond(dict(TOK, email="someone@else.ru"), ONE, '"e1"', None, "accept")
         self.assertEqual(self.srv.puts(), [])
 
-    def test_create_with_guests(self):
-        cal = {"id": "/calendars/me%40astral.ru/events-default/"}
-        s = datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc)
-        with mock.patch.object(caldav.uuid, "uuid4", return_value="fixed"):
-            href, etag, ve = caldav.create(TOK, cal, "Обед", s, s.replace(hour=10), False, "Кафе, 2 этаж", ["a@b.ru"], True)
-        self.assertEqual(href, cal["id"] + "fixed.ics")
-        self.assertEqual(self.srv.puts()[0][2]["If-None-Match"], "*")
-        text = self.srv.objects[href][0]
-        for line in ("ORGANIZER:mailto:me@astral.ru", "LOCATION:Кафе\\, 2 этаж", "DTSTART:20261001T090000Z",
-                     "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT:mailto:a@b.ru"):
-            self.assertIn(line, text)
-        self.assertEqual(etag, self.srv.objects[href][1])
-
-    def test_create_all_day(self):
-        cal = {"id": "/c/"}
-        with mock.patch.object(caldav.uuid, "uuid4", return_value="d"):
-            caldav.create(TOK, cal, "Day off", date(2026, 10, 2), date(2026, 10, 3), True)
-        self.assertIn("DTSTART;VALUE=DATE:20261002", self.srv.objects["/c/d.ics"][0])
-
-    def test_create_504_that_landed_is_not_resent(self):
-        cal = {"id": "/c/"}
-        self.srv.after[("PUT", "/c/x.ics")] = 504
-        s = datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc)
-        with mock.patch.object(caldav.uuid, "uuid4", return_value="x"):
-            href, etag, _ = caldav.create(TOK, cal, "T", s, s, False)
-        self.assertEqual(len(self.srv.puts()), 1)
-        self.assertEqual(etag, self.srv.objects[href][1])
-
-    def test_update_504_that_landed_is_not_resent(self):
+    def test_504_that_landed_is_not_resent(self):
         self.srv.after[("PUT", ONE)] = 504
-        etag = caldav.update(TOK, ONE, '"e1"', None, {"title": "x"})
+        etag = caldav.respond(TOK, ONE, '"e1"', None, "accept")
         self.assertEqual(len(self.srv.puts()), 1)
         self.assertEqual(etag, self.srv.objects[ONE][1])
 
-    def test_update_504_that_did_not_land_is_sent_once_more(self):
+    def test_504_that_did_not_land_is_sent_once_more(self):
         self.srv.fail[("PUT", ONE)] = 504
-        caldav.update(TOK, ONE, '"e1"', None, {"title": "x"})
+        caldav.respond(TOK, ONE, '"e1"', None, "accept")
         self.assertEqual(len(self.srv.puts()), 2)
-        from omcal import ical
-        self.assertEqual(self.vevents(ONE)[0].get("SUMMARY").value, "x")
+        self.assertEqual(self.mine(self.vevents(ONE)[0]).params, {"PARTSTAT": "ACCEPTED"})
 
 
 class Edits(unittest.TestCase):
-    """edit.py finds the object and occurrence from the uid, calls the provider, patches the local copy."""
+    """edit.respond finds the object and occurrence from the uid, calls the provider, patches the local copy."""
 
     def setUp(self):
         from omcal import edit
@@ -389,42 +324,10 @@ class Edits(unittest.TestCase):
     def state(self):
         return sync.read_json(os.path.join(self.dir.name, "state-Y.json"), {})["events"]
 
-    def test_delete_one_occurrence(self):
-        with mock.patch.object(caldav, "delete", return_value='"s2"') as d:
-            self.edit.delete(self.uid)
-        d.assert_called_once_with(TOK, CAL["id"] + "series.ics", '"s1"', "20261006T070000Z")
-        self.assertEqual(list(self.state()), [self.other])
-
-    def test_delete_series(self):
-        with mock.patch.object(caldav, "delete", return_value='"s2"') as d:
-            self.edit.delete(self.uid, series=True)
-        d.assert_called_once_with(TOK, CAL["id"] + "series.ics", '"s1"', None)
-        self.assertEqual(self.state(), {})
-
-    def test_update_series_title(self):
-        with mock.patch.object(caldav, "update", return_value='"s2"') as u:
-            self.edit.update(self.uid, title="Team sync", series=True)
-        u.assert_called_once_with(TOK, CAL["id"] + "series.ics", '"s1"', None, {"title": "Team sync"}, True)
-        self.assertEqual({e["title"] for e in self.state().values()}, {"Team sync"})
-
-    def test_move_one_occurrence(self):
-        with mock.patch.object(caldav, "update", return_value='"s2"') as u:
-            self.edit.update(self.uid, start="2026-10-06 12:00+03:00")
-        args = u.call_args[0]
-        self.assertEqual((args[3], sorted(args[4])), ("20261006T070000Z", ["end", "start"]))
-        self.assertEqual(self.state()[self.uid]["start"], "2026-10-06T09:00:00Z")
-        self.assertEqual(self.state()[self.uid]["end"], "2026-10-06T09:30:00Z")
-
-    def test_write_stamps_the_new_etag_on_every_occurrence(self):
-        with mock.patch.object(caldav, "update", return_value='"s2"'):
-            self.edit.update(self.uid, title="Only this")
-        self.assertEqual({e["etag"] for e in self.state().values()}, {'"s2"'})
-        with mock.patch.object(caldav, "respond", return_value='"s3"'):
+    def test_answer_stamps_the_new_etag_on_every_occurrence(self):
+        with mock.patch.object(caldav, "respond", return_value='"s2"'):
             self.edit.respond(self.other, "accept")
-        self.assertEqual({e["etag"] for e in self.state().values()}, {'"s3"'})
-        with mock.patch.object(caldav, "delete", return_value='"s4"'):
-            self.edit.delete(self.uid)
-        self.assertEqual([e["etag"] for e in self.state().values()], ['"s4"'])
+        self.assertEqual({e["etag"] for e in self.state().values()}, {'"s2"'})
 
     def test_respond(self):
         with mock.patch.object(caldav, "respond", return_value='"s2"') as r:
@@ -432,6 +335,11 @@ class Edits(unittest.TestCase):
         r.assert_called_once_with(TOK, CAL["id"] + "series.ics", '"s1"', "20261006T070000Z", "decline", False)
         self.assertEqual(self.state()[self.uid]["response"], "declined")
         self.assertEqual(self.state()[self.other]["response"], "needsAction")
+
+    def test_respond_for_the_series_marks_every_occurrence(self):
+        with mock.patch.object(caldav, "respond", return_value='"s2"'):
+            self.edit.respond(self.uid, "accept", series=True)
+        self.assertEqual({e["response"] for e in self.state().values()}, {"accepted"})
 
 
 if __name__ == "__main__":
