@@ -651,7 +651,7 @@ Panel {
           //      looking for beats hunting for a reset button.
           Item {
             width: parent.width
-            height: heroRow.height
+            height: Math.max(heroRow.height, heroButtons.height)
 
             Row {
               id: heroRow
@@ -706,15 +706,19 @@ Panel {
               }
             }
 
-            Row {
+            // Calendars, sync and expand: one above the other, at the right.
+            Column {
+              id: heroButtons
               anchors.right: parent.right
               anchors.top: parent.top
+              spacing: Style.space(2)
 
               PanelActionButton {
                 iconText: "󰃭"
                 tooltipText: root.tr("Pick which calendars to show")
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
+                fontSize: Style.font.display
                 onClicked: root.chooseCalendars()
               }
 
@@ -723,6 +727,7 @@ Panel {
                 tooltipText: root.tr(syncProc.running ? "Syncing…" : "Sync now")
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
+                fontSize: Style.font.display
                 onClicked: root.syncNow()
               }
 
@@ -731,6 +736,7 @@ Panel {
                 tooltipText: root.tr("Expand: week, month and year views, and your calendars")
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
+                fontSize: Style.font.display
                 onClicked: root.setLayout(true)
               }
             }
