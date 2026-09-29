@@ -29,7 +29,8 @@ BarWidget {
   // What the bar shows is what shell.json stores, so a cycled format is the
   // format from then on rather than something that reverts on restart.
   readonly property string activeFormat: configuredFormat
-  readonly property var labelLocale: Qt.locale(I18n.localeName(I18n.language(setting("language", ""), Qt.locale().name)))
+  // Dates in the system's format locale (LC_TIME); see I18n.formatLocaleName.
+  readonly property var labelLocale: Qt.locale(I18n.formatLocaleName(function(name) { return Quickshell.env(name) }))
   readonly property string displayText: formatted(displayDate)
   readonly property var verticalLines: displayText.split("\n")
 
@@ -80,14 +81,6 @@ BarWidget {
 
   function togglePanel() {
     if (panelLoader.item) panelLoader.item.toggle()
-  }
-
-  // Opens the panel on a new event: bindable to a key with
-  //   qs ipc -p /usr/share/omarchy/shell call predmaxim.datebook newEvent
-  function newEvent() {
-    if (!panelLoader.item) return
-    panelLoader.item.open()
-    panelLoader.item.newEvent()
   }
 
   // Opens the panel in a view: day, week, workweek, month or year.
@@ -161,7 +154,6 @@ BarWidget {
     function show(): void { root.open() }
     function hide(): void { root.close() }
     function toggle(): void { root.togglePanel() }
-    function newEvent(): void { root.newEvent() }
     function view(name: string): void { root.showView(name) }
     function showEvent(uid: string): void {
       if (!panelLoader.item) return
@@ -177,7 +169,9 @@ BarWidget {
     anchors.fill: parent
     bar: root.bar
     text: root.vertical ? "" : root.displayText
-    labelVisible: !root.vertical
+    labelVisible: false
+    // The label is drawn here, bold: WidgetButton's own has no weight.
+    fixedWidth: root.vertical ? -1 : boldLabel.implicitWidth + Style.spaceReal(horizontalMargin) * 2
     hasVisualContent: root.vertical ? root.verticalLines.length > 0 : text !== ""
     fixedHeight: root.vertical ? root.verticalLines.length * Style.bar.iconSlot : -1
     horizontalMargin: 8.75
@@ -187,6 +181,19 @@ BarWidget {
       if (b === Qt.RightButton) root.cycleFormat()
       else if (b === Qt.MiddleButton) { if (root.bar) root.bar.run("omarchy-menu-timezone") }
       else root.togglePanel()
+    }
+
+    Text {
+      id: boldLabel
+      visible: !root.vertical
+      anchors.centerIn: parent
+      textFormat: Text.PlainText
+      text: root.displayText
+      color: button.foreground
+      font.family: button.fontFamily
+      font.pixelSize: button.fontSize
+      font.bold: true
+      renderType: Text.NativeRendering
     }
 
     Column {

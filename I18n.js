@@ -4,7 +4,6 @@
 // aren't here: they come from the format locale (see Model.js). tr("In %1 min", 5)
 // fills in %1, %2… after the lookup. Qt's qsTr isn't used: Quickshell plugins
 // get no .qm catalogues. Kept Qt-free so it runs under node (tests/model.test.js).
-
 var TABLES = {
   ru: {
     // Views and navigation
@@ -25,8 +24,6 @@ var TABLES = {
     "Nothing on.": "Событий нет.", "Nothing in the next week": "На ближайшей неделе ничего",
     "All day": "Весь день", "from %1": "с %1", "until %1": "до %1", "+%1 more": "ещё %1",
     "%1 1": "1 %1", "repeats": "повторяется",
-    "New": "Новое", "New event on this day (n)": "Новое событие в этот день (n)",
-    "New event on the selected day (n)": "Новое событие в выбранный день (n)",
     "Choose calendars": "Выбрать календари", "Pick which calendars to show": "Какие календари показывать",
     "Sync": "Синхронизировать", "Sync now": "Синхронизировать сейчас", "Syncing…": "Синхронизация…",
     "sign-in needed": "нужен вход", "offline": "нет сети", "couldn't sync": "не удалось синхронизировать",
@@ -47,25 +44,10 @@ var TABLES = {
     // Invitations
     "Accept": "Принять", "Maybe": "Возможно", "Decline": "Отклонить", "Your answer now": "Ваш текущий ответ",
     "%1 and let the organiser know": "%1 и сообщить организатору", "Every occurrence: ": "Все повторы: ",
-    // Editor
-    "NEW EVENT": "НОВОЕ СОБЫТИЕ", "EDIT EVENT": "ИЗМЕНИТЬ СОБЫТИЕ", "INVITATION": "ПРИГЛАШЕНИЕ",
-    "Title": "Название", "Busy": "Занят", "Free": "Свободен",
-    "SHOW AS": "ПОКАЗЫВАТЬ", "STARTS": "НАЧАЛО", "LAST DAY": "ПОСЛЕДНИЙ ДЕНЬ", "ENDS": "КОНЕЦ",
+    // Labels
+    "Busy": "Занят", "Free": "Свободен",
     "CALENDARS": "КАЛЕНДАРИ", "BORN": "РОЖДЕНИЕ", "LIVE TO": "ПРОЖИТЬ ДО", "LIFE": "ЖИЗНЬ",
-    "Others see you as busy": "Другие видят, что вы заняты",
-    "Others see you as available": "Другие видят, что вы свободны",
-    "Location": "Место", "Invite: email addresses, separated by commas": "Пригласить: адреса через запятую",
-    "Every occurrence": "Все повторы",
-    "Title, place and delete apply to the whole series; times move one at a time":
-      "Название, место и удаление — для всей серии; время переносится по одному повтору",
-    "Answer for the whole series": "Ответить за всю серию",
-    "Delete the series?": "Удалить серию?", "Really delete?": "Точно удалить?", "Delete": "Удалить",
-    "Take it off your calendar (decline to tell the organiser)":
-      "Убрать из календаря (чтобы сообщить организатору, отклоните)",
-    "Delete it; guests get a cancellation": "Удалить; гости получат отмену",
-    "Open in %1": "Открыть в %1", "Google Calendar": "Google Календаре",
-    "Yandex Calendar": "Яндекс Календаре", "Outlook": "Outlook",
-    "Cancel": "Отмена", "Close": "Закрыть", "Saving…": "Сохранение…", "Create": "Создать", "Save": "Сохранить",
+    "Close": "Закрыть",
     // The event card
     "EVENT": "СОБЫТИЕ", "You organise it": "Вы организатор", "You accepted": "Вы приняли",
     "You said maybe": "Вы ответили «может быть»", "You declined": "Вы отклонили",
@@ -84,17 +66,14 @@ function localeVar(env, category) {
   }
   return "en_US"
 }
-
 // A language with a table in TABLES, else English.
 function textLanguage(env) {
   var l = localeVar(env, "LC_MESSAGES").slice(0, 2).toLowerCase()
   return TABLES[l] ? l : "en"
 }
-
 function formatLocaleName(env) {
   return localeVar(env, "LC_TIME")
 }
-
 function translator(lang) {
   var table = TABLES[lang] || {}
   return function (text) {
