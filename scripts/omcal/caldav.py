@@ -15,8 +15,7 @@ each series as its rule plus its exceptions, so a rule is expanded here
 (ical.occurrences) around the moved or edited occurrences. The cursor is a
 fingerprint of the calendar's objects and their ETags (Yandex's getctag
 doesn't move on edits): unchanged, the calendar isn't read again (Yandex
-rate-limits hard); changed, it is read whole, as CalDAV has no cheap delta
-like Graph's.
+rate-limits hard); changed, it is read whole, as CalDAV has no cheap delta.
 
 The one write is this account's answer to an invitation: the event's own
 iCalendar object is read, its ATTENDEE's PARTSTAT changed, and it is put back
@@ -150,7 +149,7 @@ def _color(c):
 
 
 def calendars(tok):
-    """Every event calendar in the home, with the fields google/graph give."""
+    """Every event calendar in the home, with the fields google.py gives."""
     out = []
     for href, p in propfind(tok, tok["home"], CALENDAR_PROPS, 1):
         rt = p.get(tag("d", "resourcetype"))

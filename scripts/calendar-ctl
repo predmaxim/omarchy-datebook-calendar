@@ -2,7 +2,6 @@
 """Omarchy Calendar: account sign-in and a read test (phase 0).
 
     calendar-ctl add-google <name> <client_secret.json>
-    calendar-ctl add-microsoft <name> --tenant <tenant-id> --client-id <app-id>
     calendar-ctl add-yandex <name> <email>              # asks for a Yandex app password
     calendar-ctl add-caldav <name> <https://server> <user> [<email>]
     calendar-ctl list
@@ -20,17 +19,16 @@ events.json). Events are never created, edited or deleted from here.
 Secrets never touch disk here. Each account's refresh token (and, for Google,
 the OAuth client secret) is stored in the GNOME keyring through secret-tool,
 under service=predmaxim.datebook account=<name>. The config file holds only
-what is not secret: names, providers, tenant and client IDs.
+what is not secret: names, providers, servers and addresses.
 
 Google signs in through the browser (installed-app flow with PKCE, redirected
-to a one-shot listener on 127.0.0.1). Microsoft uses the device-code flow: no
-listener, no browser redirect, and nothing to paste but a short code.
+to a one-shot listener on 127.0.0.1). CalDAV (Yandex) takes an app password.
 """
 
 import os
 import sys
 import urllib.parse
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 from omcal.auth import *  # noqa: E402,F401,F403
@@ -57,16 +55,6 @@ def cmd_test(name):
             st = e.get("start", {})
             rows.append((st.get("dateTime") or st.get("date", ""), e.get("summary", "(no title)"),
                          "Meet" if e.get("hangoutLink") else ""))
-    else:
-        tok = ms_access(a)
-        q = urllib.parse.urlencode({"startDateTime": now.isoformat(),
-                                    "endDateTime": (now + timedelta(days=30)).isoformat(),
-                                    "$top": 5, "$orderby": "start/dateTime",
-                                    "$select": "subject,start,isOnlineMeeting,onlineMeetingProvider"})
-        for e in get_json("https://graph.microsoft.com/v1.0/me/calendarView?" + q, tok).get("value", []):
-            rows.append((e["start"]["dateTime"][:16] + " " + e["start"].get("timeZone", ""),
-                         e.get("subject") or "(no title)",
-                         "Teams" if e.get("isOnlineMeeting") else ""))
     print("%s (%s): read access works.\n" % (name, a.get("email", "")))
     if not rows:
         print("  (no upcoming events)")
@@ -162,8 +150,6 @@ def main(argv):
     cmd, args = argv[1], argv[2:]
     if cmd == "add-google" and len(args) == 2:
         add_google(*args)
-    elif cmd == "add-microsoft" and len(args) == 5 and args[1] == "--tenant" and args[3] == "--client-id":
-        add_microsoft(args[0], args[2], args[4])
     elif cmd == "add-yandex" and len(args) == 2:
         from omcal import caldav
         add_caldav(args[0], caldav.YANDEX, args[1], caldav.YANDEX_WEB)

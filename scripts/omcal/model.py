@@ -71,11 +71,10 @@ def utc_iso(dt):
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def parse_instant(text, assume_utc=False):
+def parse_instant(text):
     """An ISO 8601 date-time, with or without an offset, as an aware datetime.
 
-    Graph writes seven fractional digits and no offset ("...T14:00:00.0000000")
-    when asked for UTC; Python's parser takes at most six.
+    Python's parser takes at most six fractional digits; longer ones are cut.
     """
     t = text.strip()
     if t.endswith("Z"):
@@ -86,9 +85,7 @@ def parse_instant(text, assume_utc=False):
         t = m.group(1) + (m.group(2) or "")[:7] + m.group(3)
     dt = datetime.fromisoformat(t)
     if dt.tzinfo is None:
-        if not assume_utc:
-            raise ValueError("no time zone in %r" % text)
-        dt = dt.replace(tzinfo=timezone.utc)
+        raise ValueError("no time zone in %r" % text)
     return dt
 
 

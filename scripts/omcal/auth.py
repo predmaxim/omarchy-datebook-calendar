@@ -1,9 +1,9 @@
-"""Accounts, the keyring, and signing in to Google, Microsoft 365 and CalDAV servers.
+"""Accounts, the keyring, and signing in to Google and CalDAV servers.
 
 Secrets never touch disk here. Each account's refresh token (and, for Google,
 the OAuth client secret) is stored in the GNOME keyring through secret-tool,
 under service=predmaxim.datebook account=<name>. The config file holds only
-what is not secret: names, providers, tenant and client IDs.
+what is not secret: names, providers, servers and addresses.
 """
 
 import base64
@@ -41,7 +41,6 @@ ACCOUNTS = os.path.join(CONFIG_DIR, "accounts.json")
 GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN = "https://oauth2.googleapis.com/token"
 GOOGLE_SCOPES = "openid email https://www.googleapis.com/auth/calendar"
-MS_SCOPES = "offline_access openid email User.Read Calendars.ReadWrite"
 
 
 def die(msg):
@@ -92,8 +91,8 @@ def secret_store(name, data):
          "service", APP, "account", name],
         input=json.dumps(data), text=True, capture_output=True)
     if p.returncode != 0:
-        # Raised, not fatal: the sync saves Microsoft's rotated tokens with nobody
-        # at the keyboard, and a locked keyring must fail that account alone.
+        # Raised, not fatal: a sync can save a token with nobody at the
+        # keyboard, and a locked keyring must fail that account alone.
         raise AuthError("could not save to the keyring: " + (p.stderr.strip() or "secret-tool failed"))
 
 
@@ -251,59 +250,6 @@ def google_access(a):
                                  "refresh_token": s["refresh_token"], "grant_type": "refresh_token"})
     if "access_token" not in t:
         raise AuthError("Google refused the saved sign-in (%s)" % token_error(t))
-    return t["access_token"]
-
-
-# ------------------------------------------------------------- Microsoft
-
-def ms_base(tenant):
-    return "https://login.microsoftonline.com/%s/oauth2/v2.0" % urllib.parse.quote(tenant, safe="")
-
-
-def add_microsoft(name, tenant, client_id):
-    check_name(name)
-    d = post_form(ms_base(tenant) + "/devicecode", {"client_id": client_id, "scope": MS_SCOPES})
-    if "device_code" not in d:
-        die("Microsoft refused to start sign-in (%s)" % token_error(d))
-    print(d.get("message") or "Visit %s and enter %s" % (d["verification_uri"], d["user_code"]))
-    interval = int(d.get("interval", 5))
-    deadline = time.time() + int(d.get("expires_in", 900))
-    while time.time() < deadline:
-        time.sleep(interval)
-        t = post_form(ms_base(tenant) + "/token", {
-            "client_id": client_id, "device_code": d["device_code"],
-            "grant_type": "urn:ietf:params:oauth:grant-type:device_code"})
-        if "access_token" in t:
-            break
-        err = t.get("error")
-        if err == "authorization_pending":
-            continue
-        if err == "slow_down":
-            interval += 5
-            continue
-        die("Microsoft sign-in failed (%s)" % token_error(t))
-    else:
-        die("the sign-in code expired; run the command again")
-    if "refresh_token" not in t:
-        die("Microsoft gave no refresh token: is offline_access granted?")
-    secret_store(name, {"refresh_token": t["refresh_token"]})
-    me = get_json("https://graph.microsoft.com/v1.0/me?$select=userPrincipalName", t["access_token"])
-    save_account({"name": name, "provider": "microsoft", "tenant": tenant, "clientId": client_id,
-                  "email": me.get("userPrincipalName", "")})
-    print("Added %s (%s)." % (name, me.get("userPrincipalName", "")))
-
-
-def ms_access(a):
-    s = secret_load(a["name"])
-    t = post_form(ms_base(a["tenant"]) + "/token", {
-        "client_id": a["clientId"], "refresh_token": s["refresh_token"],
-        "grant_type": "refresh_token", "scope": MS_SCOPES})
-    if "access_token" not in t:
-        raise AuthError("Microsoft refused the saved sign-in (%s)" % token_error(t))
-    # Microsoft rotates refresh tokens: keep the newest one.
-    if t.get("refresh_token") and t["refresh_token"] != s["refresh_token"]:
-        s["refresh_token"] = t["refresh_token"]
-        secret_store(a["name"], s)
     return t["access_token"]
 
 

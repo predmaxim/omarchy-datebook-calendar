@@ -26,7 +26,7 @@ import time
 # Our own files are small: an account list, calendar choices, a few months of
 # events. 64 MB is far past any real one and still safe to hold in memory.
 MAX_FILE = 64 * 1024 * 1024
-# One API reply: a page of up to 250 events (Google) or 100 (Graph), bodies
+# One API reply: a page of up to 250 events (Google), bodies
 # included. Real pages are well under 5 MB.
 MAX_REPLY = 32 * 1024 * 1024
 REPLY_DEADLINE = 90  # seconds for a whole reply, however slowly it trickles

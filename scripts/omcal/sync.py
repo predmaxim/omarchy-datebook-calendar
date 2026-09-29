@@ -3,8 +3,8 @@
     python3 -m omcal.sync [--full] [--quiet]
 
 Each account keeps its own state file, and each calendar in it its own cursor:
-a Graph deltaLink, the time of the last Google fetch, or a fingerprint of a
-CalDAV calendar's ETags. A pass fetches only what changed, and a full refresh
+the time of the last Google fetch, or a fingerprint of a CalDAV calendar's
+ETags. A pass fetches only what changed, and a full refresh
 runs when the window moves on to a new day, when a cursor has expired, or
 every six hours for Google. An account that fails (signed out, keyring locked,
 offline) keeps its last good events and reports why, and never stops the other
@@ -24,7 +24,7 @@ import time
 import urllib.error
 from datetime import datetime, timedelta, timezone
 
-from . import auth, caldav, files, google, graph
+from . import auth, caldav, files, google
 from .model import sort_key
 
 APP = "predmaxim.datebook"
@@ -60,7 +60,8 @@ def sync_account(a, full, log):
         elif a["provider"] == "caldav":
             tok, prov = auth.caldav_access(a), caldav
         else:
-            tok, prov = auth.ms_access(a), graph
+            raise auth.AuthError("%s is no longer supported: remove the account (calendar-ctl remove %s)"
+                                 % (a["provider"], a["name"]))
         # Hidden calendars are not fetched at all; their cached events go too,
         # so a shown-again calendar starts with a full fetch.
         hidden = auth.hidden_calendars().get(a["name"], set())
@@ -80,7 +81,7 @@ def sync_account(a, full, log):
             whole = full or moved or not cursor or stale
             try:
                 events, removed, cursor = _fetch(a, prov, tok, cal, window, None if whole else cursor)
-            except (graph.DeltaExpired, caldav.Changed, auth.HttpError) as e:
+            except (caldav.Changed, auth.HttpError) as e:
                 if whole or (isinstance(e, auth.HttpError) and e.code != 410):
                     raise
                 whole = True
@@ -112,9 +113,7 @@ def _fetch(a, prov, tok, cal, window, cursor):
     if prov is google:
         events, removed, at = google.fetch(a["name"], tok, cal, window, cursor)
         return events, removed, google.since(at)
-    if prov is caldav:
-        return caldav.fetch(a["name"], tok, cal, window, cursor)
-    return graph.fetch(a["name"], tok, cal, window, cursor)
+    return caldav.fetch(a["name"], tok, cal, window, cursor)
 
 
 def publish(accounts, states):

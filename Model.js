@@ -308,7 +308,7 @@ function stepMonth(year, month, delta) {
 // an exclusive end. Local time is applied only here, at display time, so the
 // cache never depends on the time zone the laptop is in today.
 
-// Fallback colours for calendars that don't bring one (Graph often doesn't),
+// Fallback colours for calendars that don't bring one,
 // picked per account so each account still reads as one family.
 var FALLBACK_COLORS = ["#7aa2f7", "#9ece6a", "#e0af68", "#bb9af7", "#7dcfff", "#f7768e"]
 
