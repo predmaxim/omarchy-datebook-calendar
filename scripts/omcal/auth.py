@@ -2,7 +2,7 @@
 
 Secrets never touch disk here. Each account's refresh token (and, for Google,
 the OAuth client secret) is stored in the GNOME keyring through secret-tool,
-under service=blacksheep.calendar account=<name>. The config file holds only
+under service=predmaxim.datebook account=<name>. The config file holds only
 what is not secret: names, providers, tenant and client IDs.
 """
 
@@ -34,7 +34,7 @@ class HttpError(RuntimeError):
         self.code = code
 
 
-APP = "blacksheep.calendar"
+APP = "predmaxim.datebook"
 CONFIG_DIR = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), APP)
 ACCOUNTS = os.path.join(CONFIG_DIR, "accounts.json")
 

@@ -18,8 +18,8 @@ import "I18n.js" as I18n
 // anchor against.
 Panel {
   id: root
-  moduleName: "blacksheep.calendar"
-  ipcTarget: "blacksheep.calendar"
+  moduleName: "predmaxim.datebook"
+  ipcTarget: "predmaxim.datebook"
   manageIpc: false
 
   property var anchorItem: null
@@ -93,8 +93,8 @@ Panel {
   //      calendar in events.json; this panel only ever reads it, and runs
   //      the sync on a timer so the file stays fresh.
   readonly property string home: Quickshell.env("HOME")
-  readonly property string pluginDir: home + "/.config/omarchy/plugins/blacksheep.calendar"
-  readonly property string eventsPath: home + "/.cache/blacksheep.calendar/events.json"
+  readonly property string pluginDir: home + "/.config/omarchy/plugins/predmaxim.datebook"
+  readonly property string eventsPath: home + "/.cache/predmaxim.datebook/events.json"
   // Times follow the bar's own clock: a format with AP or ap is 12-hour.
   readonly property bool use24h: !/ap/i.test(String(setting("format", "HH:mm")))
   property var eventIndex: Model.indexEvents(null, root.use24h, root.tr)
@@ -359,7 +359,7 @@ Panel {
 
   FileView {
     id: firedFile
-    path: (Quickshell.env("XDG_RUNTIME_DIR") || (root.home + "/.cache")) + "/blacksheep.calendar-reminded.json"
+    path: (Quickshell.env("XDG_RUNTIME_DIR") || (root.home + "/.cache")) + "/predmaxim.datebook-reminded.json"
     printErrors: false
     // Written through QSaveFile (a fresh temporary file, then a rename), never
     // opened in place.

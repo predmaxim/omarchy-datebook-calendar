@@ -25,7 +25,7 @@ the last (it defaults to one day, or one hour for a timed event).
 
 Secrets never touch disk here. Each account's refresh token (and, for Google,
 the OAuth client secret) is stored in the GNOME keyring through secret-tool,
-under service=blacksheep.calendar account=<name>. The config file holds only
+under service=predmaxim.datebook account=<name>. The config file holds only
 what is not secret: names, providers, tenant and client IDs.
 
 Google signs in through the browser (installed-app flow with PKCE, redirected
