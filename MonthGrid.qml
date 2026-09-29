@@ -17,6 +17,7 @@ Item {
   property int weekStart: 1
   property var byDay: ({})
   property bool use24h: false
+  property date now: new Date()                  // past events dim; the panel's clock
   property color foreground: Color.foreground
   property string fontFamily: Style.font.family
   property var tr: Model.english                 // I18n.translator from the panel
@@ -142,7 +143,7 @@ Item {
                 color: chip.modelData.allDay
                        ? Qt.rgba(Qt.color(chip.modelData.color).r, Qt.color(chip.modelData.color).g, Qt.color(chip.modelData.color).b, chipMouse.containsMouse ? 0.45 : 0.30)
                        : chipMouse.containsMouse ? Style.hoverFillFor(month.foreground, Color.accent) : "transparent"
-                opacity: chip.modelData.declined ? 0.5 : 1
+                opacity: chip.modelData.declined ? 0.5 : Model.isPast(chip.modelData, month.now.getTime()) ? 0.6 : 1
 
                 Rectangle {
                   id: dot

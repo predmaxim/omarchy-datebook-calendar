@@ -388,6 +388,7 @@ Item {
       weekStart: layout.p ? layout.p.weekStart : 1
       byDay: layout.p ? layout.p.eventIndex.byDay : ({})
       use24h: layout.p ? layout.p.use24h : false
+      now: layout.p ? layout.p.clockNow : new Date()
       foreground: layout.fg
       fontFamily: layout.fontName
       onPickDay: function(key) { layout.p.pickDay(key) }
