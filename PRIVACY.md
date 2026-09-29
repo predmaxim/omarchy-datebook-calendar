@@ -61,4 +61,4 @@ including the Limited Use requirements.
 ## Contact
 
 Questions or concerns: open an issue at
-<https://github.com/jonspinks/omarchy-calendar/issues>.
+<https://github.com/predmaxim/omarchy-datebook-calendar/issues>.

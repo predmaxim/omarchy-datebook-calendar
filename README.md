@@ -1,6 +1,6 @@
 # Datebook (read-only) — Yandex and Google calendars in Omarchy's clock
 
-A read-only fork of [Datebook](https://github.com/jonspinks/omarchy-calendar).
+A read-only calendar based on [Datebook](https://github.com/jonspinks/omarchy-calendar) by Jon Spinks.
 Click the clock and your week is there, with a Join button when a meeting is
 about to start. Events are never created, edited or deleted from here; the
 one thing it sends back is your answer to an invitation (Accept, Maybe,
@@ -30,7 +30,7 @@ calendar's own web app.
 ## Install
 
 ```bash
-git clone -b readonly https://github.com/predmaxim/omarchy-calendar.git \
+git clone https://github.com/predmaxim/omarchy-datebook-calendar.git \
   ~/.config/omarchy/plugins/predmaxim.datebook
 omarchy plugin enable predmaxim.datebook --before omarchy.clock
 omarchy plugin disable omarchy.clock
