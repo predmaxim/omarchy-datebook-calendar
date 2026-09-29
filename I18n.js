@@ -19,7 +19,7 @@ var TABLES = {
     "Back to today": "К сегодняшнему дню", "Back to today (t)": "К сегодняшнему дню (t)",
     "Expand: week, month and year views, and your calendars": "Развернуть: неделя, месяц, год и ваши календари",
     "Compact: Omarchy's month and the day's appointments": "Свернуть: месяц Omarchy и события дня",
-    "Start weeks on %1": "Начинать неделю с: %1", "year": "год", "Week %1 · ": "Неделя %1 · ",
+    "Start weeks on %1": "Начинать неделю с: %1", "year": "год",
     // Days and events
     "Nothing on.": "Событий нет.", "Nothing in the next week": "На ближайшей неделе ничего",
     "All day": "Весь день", "from %1": "с %1", "until %1": "до %1", "+%1 more": "ещё %1",

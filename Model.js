@@ -502,18 +502,12 @@ function shortDay(key, locale) {
 }
 
 function rangeTitle(view, anchorKey, weekStart, tr, locale) {
-  tr = tr || english
   var d = keyToDate(anchorKey)
   if (view === "day")
     return names(locale).dayName(d.getDay(), 0) + " " + shortDay(anchorKey, locale) + " " + d.getFullYear()
   if (view === "week" || view === "workweek") {
     var days = viewDays(view, anchorKey, weekStart)
-    // Numbered like the month grid's rows: by the ISO week owning Thursday.
-    var a = keyToDate(days[0])
-    for (var t = 0; t < days.length; t++)
-      if (keyToDate(days[t]).getDay() === 4) { a = keyToDate(days[t]); break }
-    return tr("Week %1 · ", isoWeek(a.getFullYear(), a.getMonth(), a.getDate()))
-      + shortDay(days[0], locale) + " – " + shortDay(days[days.length - 1], locale)
+    return shortDay(days[0], locale) + " – " + shortDay(days[days.length - 1], locale)
   }
   if (view === "month") return ""
   return String(d.getFullYear())
