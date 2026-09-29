@@ -119,5 +119,12 @@ eq(["CALENDARS", "EVENT", "BORN", "LIVE TO", "LIFE"].filter(k => !(k in I.TABLES
    [], "tr: captions translated")
 eq([M.capitalize("сентябрь 2026"), M.capitalize("September"), M.capitalize("")], ["Сентябрь 2026", "September", ""], "capitalize")
 
+// Every Model.X the QML uses exists in Model.js (a removed helper otherwise
+// fails only at run time, as a TypeError in the shell's log).
+const qml = fs.readdirSync(path.join(__dirname, "..")).filter(f => f.endsWith(".qml"))
+  .map(f => fs.readFileSync(path.join(__dirname, "..", f), "utf8")).join("\n")
+const defined = new Set([...src.matchAll(/^(?:function|var)\s+(\w+)/gm)].map(m => m[1]))
+eq([...new Set([...qml.matchAll(/(?<!")\bModel\.(\w+)/g)].map(m => m[1]))].filter(n => !defined.has(n)), [], "qml: every Model.X is defined")
+
 if (failed) { console.log(failed + " failed"); process.exit(1) }
 console.log("all passed")
