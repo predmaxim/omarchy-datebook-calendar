@@ -311,6 +311,8 @@ Item {
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.margins: Style.space(3)
+                // A one-line block is shorter than the icon's line: lift it so the bottom isn't clipped.
+                anchors.topMargin: block.height > Style.space(32) ? Style.space(3) : 0
                 textFormat: Text.PlainText
                 text: "󰕧"
                 color: joinMouse.containsMouse ? Style.hoverStateColor(grid.foreground, Color.accent) : grid.foreground
