@@ -31,7 +31,7 @@ directly to Google's and Microsoft's calendar APIs.
   through `secret-tool`), never in a plain file.
 - **Account settings** that aren't secret (account names, and the IDs of the
   Google or Microsoft app you signed in through) are kept in
-  `~/.config/blacksheep.calendar/`, readable only by you.
+  `~/.config/predmaxim.datebook/`, readable only by you.
 - **A copy of your events** is kept in your user cache, readable only by you,
   so the calendar can show them instantly and work offline.
 
@@ -44,8 +44,8 @@ to anyone, and never used for advertising, analytics or training.
   keyring entry. Do this for each account **before** removing the plugin:
   removing the plugin alone leaves the keyring entries in place.
 - Removing the plugin doesn't delete its files outside the plugin folder.
-  The account list in `~/.config/blacksheep.calendar/` and the copy of your
-  events in `~/.cache/blacksheep.calendar/` stay until you delete them; both
+  The account list in `~/.config/predmaxim.datebook/` and the copy of your
+  events in `~/.cache/predmaxim.datebook/` stay until you delete them; both
   are safe to delete.
 - You can revoke its access at any time: for Google at
   <https://myaccount.google.com/permissions>, and for Microsoft at

@@ -13,7 +13,7 @@ import "I18n.js" as I18n
 // middle click opens the timezone picker.
 BarWidget {
   id: root
-  moduleName: "blacksheep.calendar"
+  moduleName: "predmaxim.datebook"
 
   property date displayDate: clock.date
 
@@ -83,7 +83,7 @@ BarWidget {
   }
 
   // Opens the panel on a new event: bindable to a key with
-  //   qs ipc -p /usr/share/omarchy/shell call blacksheep.calendar newEvent
+  //   qs ipc -p /usr/share/omarchy/shell call predmaxim.datebook newEvent
   function newEvent() {
     if (!panelLoader.item) return
     panelLoader.item.open()
@@ -151,7 +151,7 @@ BarWidget {
   }
 
   IpcHandler {
-    target: "blacksheep.calendar"
+    target: "predmaxim.datebook"
 
     function refresh(): void { root.broadcast("refresh") }
     function cycleFormat(): void { root.cycleFormat() }

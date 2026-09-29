@@ -61,7 +61,7 @@ about ten minutes, once, and the steps are below.
 ```bash
 omarchy plugin add https://github.com/jonspinks/omarchy-calendar
 # Put it where the clock is, then take the clock off the bar.
-omarchy plugin enable blacksheep.calendar --before omarchy.clock
+omarchy plugin enable predmaxim.datebook --before omarchy.clock
 omarchy plugin disable omarchy.clock
 ```
 
@@ -70,7 +70,7 @@ calendar the anchor instead, so the centre of the bar stays centred:
 
 ```bash
 t=$(mktemp ~/.config/omarchy/shell.json.XXXXXX) \
-  && jq '.bar.centerAnchor = "blacksheep.calendar"' ~/.config/omarchy/shell.json > "$t" \
+  && jq '.bar.centerAnchor = "predmaxim.datebook"' ~/.config/omarchy/shell.json > "$t" \
   && mv "$t" ~/.config/omarchy/shell.json
 ```
 
@@ -82,7 +82,7 @@ you had, with an empty calendar.
 Everything goes through `calendar-ctl`, in the plugin's `scripts/` folder:
 
 ```bash
-C=~/.config/omarchy/plugins/blacksheep.calendar/scripts/calendar-ctl
+C=~/.config/omarchy/plugins/predmaxim.datebook/scripts/calendar-ctl
 $C add-google Personal ~/Downloads/client_secret_*.json
 $C add-microsoft Work --tenant <tenant-id> --client-id <app-id>
 $C add-microsoft Client --tenant <tenant-id> --client-id <app-id>
@@ -156,9 +156,9 @@ own format, and its 12- or 24-hour choice carries into the calendar.
 **Key bindings:** the calendar answers IPC, so you can bind keys to it, e.g.
 
 ```bash
-qs ipc -p /usr/share/omarchy/shell call blacksheep.calendar newEvent
-qs ipc -p /usr/share/omarchy/shell call blacksheep.calendar view week   # day, week, workweek, month, year
-qs ipc -p /usr/share/omarchy/shell call blacksheep.calendar toggle      # also compact, expand
+qs ipc -p /usr/share/omarchy/shell call predmaxim.datebook newEvent
+qs ipc -p /usr/share/omarchy/shell call predmaxim.datebook view week   # day, week, workweek, month, year
+qs ipc -p /usr/share/omarchy/shell call predmaxim.datebook toggle      # also compact, expand
 ```
 
 ## Remove
@@ -167,16 +167,16 @@ Sign out of each account first, while the tool is still there. That deletes
 its tokens from the keyring:
 
 ```bash
-C=~/.config/omarchy/plugins/blacksheep.calendar/scripts/calendar-ctl
+C=~/.config/omarchy/plugins/predmaxim.datebook/scripts/calendar-ctl
 $C list                 # the account names
 $C remove Personal      # and so on, for each one
-omarchy plugin remove blacksheep.calendar
+omarchy plugin remove predmaxim.datebook
 omarchy plugin enable omarchy.clock --section center
 ```
 
 What's left afterwards is the non-secret account list in
-`~/.config/blacksheep.calendar/`, and the event copy in
-`~/.cache/blacksheep.calendar/`. Both are safe to delete. To revoke access on
+`~/.config/predmaxim.datebook/`, and the event copy in
+`~/.cache/predmaxim.datebook/`. Both are safe to delete. To revoke access on
 the providers' side as well, remove the app at
 myaccount.google.com/permissions, and delete the app registration in Entra.
 
@@ -192,7 +192,7 @@ files, and no services: sync and reminders run inside the shell.
 `scripts/omcal/` does the talking. Google is fetched per calendar with
 `singleEvents` and kept current with `updatedMin`; Microsoft uses Graph's
 `calendarView/delta`. A copy of the next four months (and the last five weeks)
-lives in `~/.cache/blacksheep.calendar/`, and the widget reads one file from
+lives in `~/.cache/predmaxim.datebook/`, and the widget reads one file from
 it. Every change you make is written straight to the provider, guarded by the
 event's etag, then applied to the local copy at once, before the next sync
 confirms it. Times are kept in UTC, and only turned into local time on screen.

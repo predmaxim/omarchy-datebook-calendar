@@ -10,7 +10,7 @@ every six hours for Google. An account that fails (signed out, keyring locked,
 offline) keeps its last good events and reports why, and never stops the other
 accounts syncing.
 
-Files, all 0600 in a 0700 directory under $XDG_CACHE_HOME/blacksheep.calendar:
+Files, all 0600 in a 0700 directory under $XDG_CACHE_HOME/predmaxim.datebook:
     state-<account>.json   calendars, cursors and events for one account
     events.json            what the widget reads: accounts, calendars, events
 """
@@ -27,7 +27,7 @@ from datetime import datetime, timedelta, timezone
 from . import auth, caldav, files, google, graph
 from .model import sort_key
 
-APP = "blacksheep.calendar"
+APP = "predmaxim.datebook"
 CACHE = os.path.join(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), APP)
 RUNTIME = os.environ.get("XDG_RUNTIME_DIR") or CACHE
 DAYS_BACK, DAYS_AHEAD = 35, 120

@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "id": "blacksheep.calendar",
-  "name": "Datebook",
+  "id": "predmaxim.datebook",
+  "name": "Datebook (read-only)",
   "version": "0.1.0",
-  "author": "Jon",
+  "author": "Jon, predmaxim",
   "license": "MIT",
-  "description": "Your Google Calendar and Microsoft 365 events in Omarchy's clock, with reminders you can join from",
+  "description": "Your Yandex (CalDAV) and Google calendars in Omarchy's clock, read only: events, a card for each, and Join buttons",
   "kinds": [
     "bar-widget"
   ],
@@ -13,8 +13,8 @@
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "Datebook",
-    "description": "The clock, with Google Calendar and Microsoft 365 events on the month grid, a day agenda, and Join buttons for meetings.",
+    "displayName": "Datebook (read-only)",
+    "description": "The clock, with your calendars' events on the month grid, a day agenda, and Join buttons for meetings. Read only.",
     "category": "Time",
     "allowMultiple": false
   }
