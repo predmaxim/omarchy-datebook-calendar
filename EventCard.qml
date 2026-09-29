@@ -22,14 +22,10 @@ Item {
 
   readonly property bool hasWeb: !!event && /^https:\/\//.test(String(event.webLink || ""))
   readonly property bool hasJoin: !!event && !!event.join && /^https:\/\//.test(String(event.join.url || ""))
-  readonly property bool invitation: !!event && !event.organizer && event.response !== "none"
 
   implicitHeight: body.implicitHeight
 
-  onEventChanged: {
-    answer.open = false
-    if (event) Qt.callLater(function() { body.forceActiveFocus() })
-  }
+  onEventChanged: if (event) Qt.callLater(function() { body.forceActiveFocus() })
 
   // A line of the card: plain text, with its https links clickable.
   component Line: Text {
@@ -41,7 +37,7 @@ Item {
     linkColor: Color.accent
     color: card.foreground
     font.family: card.fontFamily
-    font.pixelSize: Style.font.heading
+    font.pixelSize: Style.font.body
     onLinkActivated: function(link) { card.openLink(link) }
 
     HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
@@ -89,7 +85,7 @@ Item {
 
     Line {
       visible: plain !== ""
-      plain: card.event ? [card.invitation ? "" : Model.responseText(card.event, card.tr), card.tr(card.event.busy ? "Busy" : "Free")]
+      plain: card.event ? [Model.isInvitation(card.event) ? "" : Model.responseText(card.event, card.tr), card.tr(card.event.busy ? "Busy" : "Free")]
                            .filter(function(s) { return s }).join("  ·  ") : ""
       color: Qt.darker(card.foreground, 1.4)
     }
@@ -103,67 +99,14 @@ Item {
         anchors.left: parent.left
         spacing: Style.space(6)
 
-        // An invitation: one button with the answer made (or Choose); the
-        // answers open above it, where the card has room. A recurring one is
-        // answered for the whole series, as in the day's list.
-        Item {
+        AnswerPicker {
           id: answer
-          visible: card.invitation
-          width: answerButton.width
-          height: answerButton.height
-          property bool open: false
-
-          Button {
-            id: answerButton
-            bordered: true
-            enabled: !card.busy
-            iconText: "󰅀"
-            text: card.event ? Model.answerLabel(card.event, card.tr) : ""
-            foreground: card.event && card.event.response !== "needsAction" ? Color.accent : card.foreground
-            fontFamily: card.fontFamily
-            onClicked: answer.open = !answer.open
-          }
-
-          Rectangle {
-            visible: answer.open
-            anchors.bottom: parent.top
-            anchors.bottomMargin: Style.space(4)
-            width: choices.implicitWidth + Style.space(8)
-            height: choices.implicitHeight + Style.space(8)
-            radius: Style.cornerRadius
-            color: Color.popups.background
-            border.width: Style.spacing.hairline
-            border.color: Color.popups.border
-
-            Column {
-              id: choices
-              anchors.centerIn: parent
-              spacing: Style.space(2)
-
-              Repeater {
-                model: [
-                  { answer: "accept", response: "accepted", label: card.tr("Accept"), icon: "󰄬" },
-                  { answer: "tentative", response: "tentative", label: card.tr("Maybe"), icon: "󰋗" },
-                  { answer: "decline", response: "declined", label: card.tr("Decline"), icon: "󰅖" }
-                ]
-                Button {
-                  required property var modelData
-                  readonly property bool current: !!card.event && card.event.response === modelData.response
-                  iconText: current ? "󰄵" : modelData.icon
-                  text: modelData.label
-                  tooltipText: current ? card.tr("Your answer now")
-                                       : (card.event && card.event.recurring ? card.tr("Every occurrence: ") : "")
-                                         + card.tr("%1 and let the organiser know", modelData.label)
-                  foreground: current ? Color.accent : card.foreground
-                  fontFamily: card.fontFamily
-                  onClicked: {
-                    answer.open = false
-                    card.respond(modelData.answer)
-                  }
-                }
-              }
-            }
-          }
+          event: card.event
+          busy: card.busy
+          foreground: card.foreground
+          fontFamily: card.fontFamily
+          tr: card.tr
+          onRespond: function(a) { card.respond(a) }
         }
 
         Button {
