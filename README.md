@@ -1,5 +1,7 @@
 # Datebook Calendar for Omarchy
 
+Based on [Datebook](https://github.com/jonspinks/omarchy-calendar).
+
 A calendar in Omarchy's top bar for looking, not editing. Click the date and
 you see today's meetings with a Join button for each. Expand it for a week,
 month or year of Yandex, Google and any CalDAV calendars.
@@ -109,8 +111,6 @@ rm -rf ~/.config/predmaxim.datebook ~/.cache/predmaxim.datebook
   `~/.cache/predmaxim.datebook/events.json`, which the QML widget reads.
   Tests: `tests/run.sh`.
 
-## Credits
+## License
 
-It grew out of [Datebook](https://github.com/jonspinks/omarchy-calendar) by
-Jon Spinks; parts of the panel come from Omarchy's own clock. MIT, see
-[LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE). Parts of the panel come from Omarchy's own clock.
