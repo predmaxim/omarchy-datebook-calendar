@@ -706,7 +706,7 @@ Panel {
               }
             }
 
-            // Calendars, sync and expand: one above the other, at the right.
+            // Expand, sync and calendars: one above the other, at the right.
             Column {
               id: heroButtons
               anchors.right: parent.right
@@ -714,13 +714,13 @@ Panel {
               spacing: Style.space(2)
 
               PanelActionButton {
-                iconText: "󰃭"
-                tooltipText: root.tr("Pick which calendars to show")
+                iconText: "󰊓"
+                tooltipText: root.tr("Expand: week, month and year views, and your calendars")
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
                 fontSize: Style.font.display
-                onClicked: root.chooseCalendars()
-              }
+                onClicked: root.setLayout(true)
+  
 
               PanelActionButton {
                 iconText: syncProc.running ? "󰑓" : "󰑐"
@@ -732,13 +732,14 @@ Panel {
               }
 
               PanelActionButton {
-                iconText: "󰊓"
-                tooltipText: root.tr("Expand: week, month and year views, and your calendars")
+                iconText: "󰃭"
+                tooltipText: root.tr("Pick which calendars to show")
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
                 fontSize: Style.font.display
-                onClicked: root.setLayout(true)
+                onClicked: root.chooseCalendars()
               }
+            }
             }
           }
 
