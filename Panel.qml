@@ -720,7 +720,7 @@ Panel {
                 fontFamily: root.contentFontFamily
                 fontSize: Style.font.display
                 onClicked: root.setLayout(true)
-  
+              }
 
               PanelActionButton {
                 iconText: syncProc.running ? "󰑓" : "󰑐"
@@ -739,7 +739,6 @@ Panel {
                 fontSize: Style.font.display
                 onClicked: root.chooseCalendars()
               }
-            }
             }
           }
 
