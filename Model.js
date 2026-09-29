@@ -711,6 +711,24 @@ function cardWhen(row, use24h, tr, locale) {
   return dateLabel(s, locale) + " " + clockLabel(s, use24h) + " – " + dateLabel(e, locale) + " " + clockLabel(e, use24h)
 }
 
+// Text as StyledText with its https links clickable; everything else
+// escaped, so text from an invitation can't bring markup of its own.
+// Punctuation that ends a sentence stays outside the link.
+function linkify(text) {
+  var esc = function (s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+  }
+  var out = "", last = 0, re = /https:\/\/[^\s<>"]+/g, m
+  var str = String(text || "")
+  while ((m = re.exec(str)) !== null) {
+    var url = m[0].replace(/[.,;:!?)\]]+$/, "")
+    out += esc(str.slice(last, m.index)) + '<a href="' + esc(url) + '">' + esc(url) + "</a>"
+    last = m.index + url.length
+    re.lastIndex = last
+  }
+  return out + esc(str.slice(last))
+}
+
 // Which calendar, whether it repeats, and where else the same event is.
 function cardCalendar(row, tr) {
   tr = tr || english
@@ -773,6 +791,7 @@ if (typeof module !== "undefined") {
     dateLabel: dateLabel,
     cardWhen: cardWhen,
     cardCalendar: cardCalendar,
+    linkify: linkify,
     responseText: responseText
   }
 }
