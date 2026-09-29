@@ -13,14 +13,17 @@ calendar's own web app.
 
 - **Day, week, working week, month and year**, switched with the buttons or
   keys 1 to 5. Overlapping meetings sit side by side.
-- **An event card**: click an event for its time, calendar, place and your
-  answer, with **Join**, **Open in Web** and, for invitations, Accept / Maybe /
-  Decline (a recurring invitation is answered for the whole series).
+- **An event card**: click an event for its time, calendar (and where else the
+  same event is), place and clickable links, with **Join**, **Open in Web** and,
+  for invitations, one button with your answer (or Choose) that opens Accept /
+  Maybe / Decline; a recurring invitation is answered for the whole series.
+- **Compact view**: each of the day's events on one line, with its time and an
+  icon-only Join; expand, sync and calendars as icons down the right.
 - **Reminders you can join from**, and snooze.
 - **Language.** Text follows the system language (`LC_MESSAGES`; English and
   Russian so far), dates follow its formats (`LC_TIME`): with
   `LANG=en_US.UTF-8` and `LC_TIME=ru_RU.UTF-8` the buttons read "Today" and
-  "Sync" and the dates "29 сентября".
+  "Join" and the dates "29 сентября".
 - **Private.** It talks straight to Yandex or Google from your machine; sign-ins
   live in the system keyring. See [PRIVACY.md](PRIVACY.md).
 
