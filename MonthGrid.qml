@@ -112,7 +112,7 @@ Item {
               anchors.centerIn: parent
               textFormat: Text.PlainText
               text: cell.modelData.day === 1
-                    ? month.tr("%1 1", month.tr(Model.MONTHS_SHORT[Model.keyToDate(cell.modelData.key).getMonth()]))
+                    ? Model.shortDay(cell.modelData.key, month.labelLocale)
                     : cell.modelData.day
               color: cell.modelData.today ? Color.background
                    : !cell.modelData.inMonth ? Qt.darker(month.foreground, 2.2)
