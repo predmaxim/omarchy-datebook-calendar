@@ -65,14 +65,14 @@ Panel {
   // starts out matching the rest of the desktop rather than a hardcoded
   // convention. Clicking the grid's "W" heading writes the choice back to
   // shell.json.
-  readonly property int weekStart: Model.normalizedWeekStart(setting("weekStartDay", null), Qt.locale().firstDayOfWeek)
-  // The interface language: the "language" setting, else the system's; any
-  // language without a table in I18n.js shows in English. Day and month names
-  // come from the same locale. Where the week starts is still the system's
-  // regional convention, overridable above.
-  readonly property string language: I18n.language(setting("language", ""), Qt.locale().name)
+  readonly property int weekStart: Model.normalizedWeekStart(setting("weekStartDay", null), labelLocale.firstDayOfWeek)
+  // Text in the system's language (LC_MESSAGES), dates in its format locale
+  // (LC_TIME), as the rest of the desktop splits them. A language without a
+  // table in I18n.js shows in English.
+  readonly property var env: function(name) { return Quickshell.env(name) }
+  readonly property string language: I18n.textLanguage(env)
   readonly property var tr: I18n.translator(language)
-  readonly property var labelLocale: Qt.locale(I18n.localeName(language))
+  readonly property var labelLocale: Qt.locale(I18n.formatLocaleName(env))
   readonly property string nextWeekStartLabel: labelLocale.dayName(Model.toggledWeekStart(weekStart), Locale.LongFormat)
   readonly property var weekdays: Model.weekdayOrder(weekStart)
   readonly property var weeks: Model.monthGrid(viewYear, viewMonth, weekStart, todayKey)
@@ -143,7 +143,7 @@ Panel {
 
   function setLayout(expanded) {
     if (expanded === root.modern) return
-    if (root.editorOpen && !writeProc.running) root.closeEditor()
+    if (root.cardOpen) root.closeCard()
     if (!expanded) root.showSelectedMonth()
     persistSettings({ layout: expanded ? "modern" : "classic" })
   }
@@ -158,14 +158,6 @@ Panel {
   // (a calendar shown again is fetched in full), and events.json follows.
   function toggleCalendar(c) {
     root.runWrite("cal:" + c.ref, [c.shown ? "hide" : "show", c.account, c.id])
-  }
-
-  function removeDraftEvent(series) {
-    root.runWrite(root.draftEvent.uid, ["delete", root.draftEvent.uid].concat(series ? ["--series"] : []))
-  }
-
-  function respondFromEditor(answer, series) {
-    root.runWrite(root.draftEvent.uid, ["respond", root.draftEvent.uid, answer].concat(series ? ["--series"] : []))
   }
 
   // From the year: the month, on today if it's in it, else on its first day.
@@ -211,77 +203,57 @@ Panel {
     if (root.opened) root.close()
   }
 
-  // ---- Writes (calendar-ctl, one at a time). The ctl patches the local copy
-  //      and syncs, so events.json changes and the panel follows by itself.
+  // ---- Writes (calendar-ctl, one at a time): calendar choices, which stay
+  //      local, and answers to invitations, the one thing sent to the server.
+  //      The ctl patches the local copy and syncs, so events.json changes and
+  //      the panel follows by itself.
   property string writingUid: ""
 
   function respond(ev, answer, series) {
     root.runWrite(ev.uid, ["respond", ev.uid, answer].concat(series ? ["--series"] : []))
   }
 
-  // A write from the editor closes it when it lands; a failure is said in the
-  // editor if it is open, and in a notification otherwise.
+  // A failure is said in a notification.
   function runWrite(uid, args) {
     if (writeProc.running || !args.length) return
-    root.writingUid = uid || "new"
-    root.editorError = ""
-    writeProc.fromEditor = root.editorOpen
+    root.writingUid = uid
     writeProc.command = [root.pluginDir + "/scripts/calendar-ctl"].concat(args)
     writeProc.running = true
   }
 
   Process {
     id: writeProc
-    property bool fromEditor: false
     stderr: StdioCollector { id: writeErr; waitForEnd: true }
     onExited: function(code) {
       root.writingUid = ""
-      if (code === 0) {
-        if (fromEditor) root.closeEditor()
-        return
-      }
+      if (code === 0) return
       var msg = String(writeErr.text || "").trim().replace(/^calendar-ctl: /, "") || "the change wasn't made"
       msg = msg.charAt(0).toUpperCase() + msg.slice(1)
-      if (fromEditor && root.editorOpen) {
-        root.editorError = msg
-        return
-      }
       failProc.command = ["omarchy-notification-send", "-g", "󰃭", "-u", "normal", "--app-name", "Datebook",
                           root.tr("Calendar: not saved"), msg]
       failProc.running = true
     }
   }
 
-  // ---- The event editor (EventEditor.qml). Open, the panel's own keys step
-  //      aside so typing goes into the fields.
-  property var draft: null
-  property var draftEvent: null
-  property string editorError: ""
-  readonly property bool editorOpen: draft !== null
+  // ---- The event card (EventCard.qml). Open, the panel's own keys step
+  //      aside: Esc and Enter close the card, not the panel.
+  property var cardEvent: null
+  readonly property bool cardOpen: cardEvent !== null
 
-  readonly property var editableCalendars: {
-    var out = []
-    var cals = (root.eventData && root.eventData.calendars) || []
-    for (var i = 0; i < cals.length; i++) {
-      var c = cals[i]
-      if (c.shown && c.editable) out.push({ value: c.account + "/" + c.id, label: c.account + ": " + (c.name || c.id), primary: c.primary })
-    }
-    return out
+  function openCard(ev) {
+    if (ev && ev.uid) root.cardEvent = ev
   }
 
-  function defaultCalendar() {
-    var saved = String(setting("defaultCalendar", "") || "")
-    var list = root.editableCalendars
-    for (var i = 0; i < list.length; i++) if (list[i].value === saved) return saved
-    for (var j = 0; j < list.length; j++) if (list[j].primary) return list[j].value
-    return list.length ? list[0].value : ""
+  function closeCard() {
+    root.cardEvent = null
+    Qt.callLater(function() { if (keyCatcher) keyCatcher.forceActiveFocus() })
   }
 
-  function openEditor(ev) {
-    if (!ev || !ev.uid) return
-    root.editorError = ""
-    root.draftEvent = ev
-    root.draft = Model.eventDraft(ev)
+  // An answer from the card closes it; the list and the card follow the sync.
+  function respondFromCard(answer) {
+    var ev = root.cardEvent
+    root.closeCard()
+    root.respond(ev, answer, ev.recurring)
   }
 
   // Open one event by its uid (IPC showEvent), from whichever day holds it.
@@ -292,31 +264,10 @@ Panel {
       for (var i = 0; i < rows.length; i++) {
         if (rows[i].uid !== uid) continue
         root.pickDay(key)
-        root.openEditor(rows[i])
+        root.openCard(rows[i])
         return
       }
     }
-  }
-
-  function newEvent() {
-    root.editorError = ""
-    root.draftEvent = null
-    root.draft = Model.newDraft(root.selectedKey, new Date(), root.defaultCalendar())
-  }
-
-  function closeEditor() {
-    root.draft = null
-    root.draftEvent = null
-    root.editorError = ""
-    Qt.callLater(function() { if (keyCatcher) keyCatcher.forceActiveFocus() })
-  }
-
-  function saveDraft(d) {
-    var out = Model.draftArgs(d, root.tr)
-    if (out.error) { root.editorError = out.error; return }
-    if (!out.args.length) { root.closeEditor(); return }
-    if (d.mode === "create" && d.calendar !== setting("defaultCalendar", "")) persistSettings({ defaultCalendar: d.calendar })
-    root.runWrite(d.uid, out.args)
   }
 
   Process { id: failProc }
@@ -494,7 +445,7 @@ Panel {
     // Dismissing the panel mid-edit would otherwise leave the inputs up,
     // waiting behind a closed popup for the next time it opens.
     if (root.editingLife) root.cancelEditingLife()
-    if (root.editorOpen && !writeProc.running) root.closeEditor()
+    if (root.cardOpen) root.closeCard()
     root.controller.hide()
   }
 
@@ -651,7 +602,7 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      blocked: root.editingLife || root.editorOpen
+      blocked: root.editingLife || root.cardOpen
       onMoveRequested: function(dx, dy) {
         if (dx !== 0) root.step(dx)
         if (dy !== 0 && (root.viewMode === "month" || !root.modern)) root.moveYear(dy)
@@ -667,7 +618,6 @@ Panel {
         else if (t === "}") root.moveYear(1)
         else if (t === "t" || t === "T") root.goToToday()
         else if (t === "w" || t === "W") root.toggleWeekStart()
-        else if (t === "n" || t === "N") root.newEvent()
       }
 
       ModernLayout {
@@ -728,7 +678,7 @@ Panel {
                 id: heroDate
                 textFormat: Text.PlainText
                 anchors.verticalCenter: parent.verticalCenter
-                text: root.today.toLocaleDateString(root.labelLocale, root.language === "en" ? "MMMM d" : "d MMMM")
+                text: root.today.toLocaleDateString(root.labelLocale, root.labelLocale.name === "en_US" ? "MMMM d" : "d MMMM")
                 color: heroMouse.containsMouse
                   ? Style.hoverStateColor(root.contentForeground, Color.accent)
                   : root.contentForeground
@@ -962,25 +912,21 @@ Panel {
           }
 
           // ---- One event, over the views while it is open.
-          EventEditor {
+          EventCard {
             tr: root.tr
             labelLocale: root.labelLocale
-            visible: root.editorOpen
+            visible: root.cardOpen && !root.modern
             width: Math.min(parent.width, Style.space(520))
             anchors.horizontalCenter: parent.horizontalCenter
             height: visible ? implicitHeight : 0
-            draft: root.modern ? null : root.draft
-            event: root.draftEvent
-            calendars: root.editableCalendars
-            saving: root.writingUid !== ""
-            error: root.editorError
+            event: root.modern ? null : root.cardEvent
+            use24h: root.use24h
+            busy: root.writingUid !== ""
             foreground: root.contentForeground
             fontFamily: root.contentFontFamily
-            onSave: function(d) { root.saveDraft(d) }
-            onCancel: root.closeEditor()
-            onRemove: function(series) { root.removeDraftEvent(series) }
-            onRespond: function(answer, series) { root.respondFromEditor(answer, series) }
+            onClose: root.closeCard()
             onOpenLink: function(url) { root.openUrl(url) }
+            onRespond: function(answer) { root.respondFromCard(answer) }
           }
 
           // ---- Which view: only in the expanded layout now (keys 1 to 5
@@ -1007,7 +953,7 @@ Panel {
           TimeGrid {
             tr: root.tr
             labelLocale: root.labelLocale
-            visible: root.isTimeView && !root.editorOpen
+            visible: root.isTimeView && !root.cardOpen
             width: Math.min(parent.width, Style.space(root.viewMode === "day" ? 520 : 880))
             anchors.horizontalCenter: parent.horizontalCenter
             height: implicitHeight
@@ -1017,7 +963,7 @@ Panel {
             use24h: root.use24h
             foreground: root.contentForeground
             fontFamily: root.contentFontFamily
-            onOpenEvent: function(ev) { root.openEditor(ev) }
+            onOpenEvent: function(ev) { root.openCard(ev) }
             onJoinEvent: function(url) { root.openUrl(url) }
             onPickDay: function(key) { root.openDay(key) }
           }
@@ -1044,7 +990,7 @@ Panel {
           //      the seven day columns. Always six rows, so the popup is
           //      exactly as tall in February as it is in August.
           Item {
-            visible: !root.editorOpen
+            visible: !root.cardOpen
             width: parent.width
             height: gridColumn.y + gridColumn.height
 
@@ -1247,7 +1193,7 @@ Panel {
           //      The label is centered and fixed-width, so it holds still
           //      from "MAY" to "SEPTEMBER".
           Item {
-            visible: !root.editorOpen
+            visible: !root.cardOpen
             width: parent.width
             height: monthNav.height
 
@@ -1268,7 +1214,7 @@ Panel {
                 horizontalAlignment: Text.AlignHCenter
                 text: (root.viewMode === "month" || !root.modern
                   ? root.labelLocale.standaloneMonthName(root.viewDate.getMonth(), Locale.LongFormat) + " " + root.viewDate.getFullYear()
-                  : Model.rangeTitle(root.viewMode, root.selectedKey, root.weekStart, root.tr)).toUpperCase()
+                  : Model.rangeTitle(root.viewMode, root.selectedKey, root.weekStart, root.tr, root.labelLocale)).toUpperCase()
                 color: Qt.darker(root.contentForeground, 1.4)
                 font.family: root.contentFontFamily
                 font.pixelSize: Style.font.body
@@ -1305,7 +1251,7 @@ Panel {
           //      own calendar app; a meeting gets a Join button. The time
           //      views show the events themselves, so they don't need it.
           Item {
-            visible: !root.editorOpen
+            visible: !root.cardOpen
             width: parent.width
             height: agenda.height
 
@@ -1369,7 +1315,7 @@ Panel {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: root.openEditor(eventRow.modelData)
+                    onClicked: root.openCard(eventRow.modelData)
                   }
 
                   Column {
@@ -1495,16 +1441,6 @@ Panel {
               Row {
                 anchors.right: parent.right
                 spacing: Style.space(4)
-
-                Button {
-                  iconText: "󰐕"
-                  text: root.tr("New")
-                  tooltipText: root.tr("New event on this day (n)")
-                  visible: root.editableCalendars.length > 0
-                  foreground: root.contentForeground
-                  fontFamily: root.contentFontFamily
-                  onClicked: root.newEvent()
-                }
 
                 Button {
                   iconText: "󰃭"

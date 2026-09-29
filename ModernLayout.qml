@@ -22,13 +22,13 @@ Item {
   readonly property int railWidth: Style.space(236)
   readonly property int gap: Style.space(14)
 
-  readonly property var next: p ? Model.nextUp(p.eventIndex.byDay, p.clockNow, p.use24h, layout.tr) : null
+  readonly property var next: p ? Model.nextUp(p.eventIndex.byDay, p.clockNow, p.use24h, layout.tr, layout.labelLocale) : null
 
   readonly property string title: {
     if (!p) return ""
     if (p.viewMode === "month")
       return Model.capitalize(layout.labelLocale.standaloneMonthName(p.viewMonth, Locale.LongFormat)) + " " + p.viewYear
-    return Model.rangeTitle(p.viewMode, p.selectedKey, p.weekStart, layout.tr)
+    return Model.rangeTitle(p.viewMode, p.selectedKey, p.weekStart, layout.tr, layout.labelLocale)
   }
 
   // ---------------------------------------------------------------- header
@@ -118,18 +118,6 @@ Item {
         fontFamily: layout.fontName
         onClicked: layout.p.setLayout(false)
       }
-
-      Button {
-        anchors.verticalCenter: parent.verticalCenter
-        visible: layout.p && layout.p.editableCalendars.length > 0
-        bordered: true
-        iconText: "󰐕"
-        text: layout.tr("New")
-        tooltipText: layout.tr("New event on the selected day (n)")
-        foreground: Color.accent
-        fontFamily: layout.fontName
-        onClicked: layout.p.newEvent()
-      }
     }
   }
 
@@ -168,7 +156,7 @@ Item {
           anchors.fill: parent
           hoverEnabled: true
           cursorShape: nextCard.n ? Qt.PointingHandCursor : Qt.ArrowCursor
-          onClicked: if (nextCard.n) layout.p.openEditor(nextCard.n.event)
+          onClicked: if (nextCard.n) layout.p.openCard(nextCard.n.event)
         }
 
         Column {
@@ -402,7 +390,7 @@ Item {
       fontFamily: layout.fontName
       onPickDay: function(key) { layout.p.pickDay(key) }
       onOpenDay: function(key) { layout.p.openDay(key) }
-      onOpenEvent: function(ev) { layout.p.openEditor(ev) }
+      onOpenEvent: function(ev) { layout.p.openCard(ev) }
     }
 
     TimeGrid {
@@ -419,7 +407,7 @@ Item {
       fontFamily: layout.fontName
       // As many hours as the space allows; the rest scroll.
       visibleHours: Math.max(4, Math.floor((main.height - Style.space(34) - allDayRows * Style.space(20) - Style.space(14)) / hourHeight))
-      onOpenEvent: function(ev) { layout.p.openEditor(ev) }
+      onOpenEvent: function(ev) { layout.p.openCard(ev) }
       onJoinEvent: function(url) { layout.p.openUrl(url) }
       onPickDay: function(key) { layout.p.openDay(key) }
     }
@@ -446,16 +434,16 @@ Item {
   // ----------------------------------------------------------------- sheet
   // A click on the dimmed view closes the sheet, like any modern side sheet.
   Rectangle {
-    visible: layout.p && layout.p.editorOpen
+    visible: layout.p && layout.p.cardOpen
     anchors.fill: main
     color: Color.popups.background
     opacity: 0.45
-    MouseArea { anchors.fill: parent; onClicked: layout.p.closeEditor() }
+    MouseArea { anchors.fill: parent; onClicked: layout.p.closeCard() }
   }
 
   Rectangle {
     id: sheet
-    visible: layout.p && layout.p.editorOpen
+    visible: layout.p && layout.p.cardOpen
     anchors.top: main.top
     anchors.bottom: main.bottom
     anchors.right: main.right
@@ -470,27 +458,23 @@ Item {
     Flickable {
       anchors.fill: parent
       anchors.margins: Style.space(14)
-      contentHeight: sheetEditor.implicitHeight
+      contentHeight: sheetCard.implicitHeight
       clip: true
       boundsBehavior: Flickable.StopAtBounds
 
-      EventEditor {
+      EventCard {
         tr: layout.tr
         labelLocale: layout.labelLocale
-        id: sheetEditor
+        id: sheetCard
         width: parent.width
-        draft: layout.p && layout.p.modern ? layout.p.draft : null
-        event: layout.p ? layout.p.draftEvent : null
-        calendars: layout.p ? layout.p.editableCalendars : []
-        saving: layout.p ? layout.p.writingUid !== "" : false
-        error: layout.p ? layout.p.editorError : ""
+        event: layout.p && layout.p.modern ? layout.p.cardEvent : null
+        use24h: layout.p ? layout.p.use24h : true
+        busy: layout.p ? layout.p.writingUid !== "" : false
         foreground: layout.fg
         fontFamily: layout.fontName
-        onSave: function(d) { layout.p.saveDraft(d) }
-        onCancel: layout.p.closeEditor()
-        onRemove: function(series) { layout.p.removeDraftEvent(series) }
-        onRespond: function(answer, series) { layout.p.respondFromEditor(answer, series) }
+        onClose: layout.p.closeCard()
         onOpenLink: function(url) { layout.p.openUrl(url) }
+        onRespond: function(answer) { layout.p.respondFromCard(answer) }
       }
     }
   }
