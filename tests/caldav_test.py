@@ -173,17 +173,36 @@ class Fetch(unittest.TestCase):
     def test_unknown_tzid_event_still_listed(self):
         self.assertIn("From Outlook", self.read(("/c/o.ics", '"e4"', OUTLOOK_ZONE))[0])
 
-    def test_unexpanded_series_shows_only_its_exceptions(self):
-        # Yandex ignores <C:expand>: the rule's own occurrences aren't shown yet
-        # (a known gap), but a moved or edited occurrence is a VEVENT of its own.
+    def test_series_is_expanded_around_its_exceptions(self):
+        # Yandex ignores <C:expand>: the rule is expanded here, and an
+        # occurrence that was moved or edited comes as its own VEVENT instead.
         fake = reported(("/c/s.ics", '"e5"', SERIES))
         with mock.patch.object(caldav, "request", fake):
             events = caldav.fetch("Y", TOK, CAL, WINDOW)[0]
+        byid = {e["uid"].split("#")[-1]: e for e in events}
+        self.assertEqual(len(events), 10)
+        moved = byid["20261007T070000Z"]
+        self.assertEqual((moved["title"], moved["start"], moved["response"]),
+                         ("Standup (moved)", "2026-10-07T09:00:00Z", "accepted"))
+        first = byid["20261005T070000Z"]
+        self.assertEqual((first["title"], first["start"], first["end"], first["response"], first["remind"]),
+                         ("Standup", "2026-10-05T07:00:00Z", "2026-10-05T07:30:00Z", "needsAction", [10]))
+        self.assertTrue(all(e["recurring"] and e["seriesId"] == "s.ics" and e["etag"] == '"e5"' for e in events))
+        self.assertTrue(first["uid"].startswith("Y/%s/s.ics#" % CAL["id"]))
+
+    def test_series_outside_the_window_is_cut(self):
+        long = SERIES.replace("RRULE:FREQ=DAILY;COUNT=10", "RRULE:FREQ=DAILY").replace(
+            ":20261005T", ":20260801T")
+        with mock.patch.object(caldav, "request", reported(("/c/s.ics", '"e5"', long))):
+            events = caldav.fetch("Y", TOK, CAL, WINDOW)[0]
+        starts = sorted(e["start"] for e in events)
+        self.assertEqual((starts[0], starts[-1]), ("2026-08-24T07:00:00Z", "2027-01-25T07:00:00Z"))
+
+    def test_unsupported_rule_shows_only_its_exceptions(self):
+        monthly = SERIES.replace("RRULE:FREQ=DAILY;COUNT=10", "RRULE:FREQ=MONTHLY;BYMONTHDAY=5")
+        with mock.patch.object(caldav, "request", reported(("/c/s.ics", '"e5"', monthly))):
+            events = caldav.fetch("Y", TOK, CAL, WINDOW)[0]
         self.assertEqual([e["title"] for e in events], ["Standup (moved)"])
-        ev = events[0]
-        self.assertEqual((ev["recurring"], ev["seriesId"], ev["start"], ev["response"]),
-                         (True, "s.ics", "2026-10-07T09:00:00Z", "accepted"))
-        self.assertTrue(ev["uid"].endswith("/s.ics#20261007T070000Z"))
 
 
 class Sync(unittest.TestCase):

@@ -119,5 +119,56 @@ class Values(unittest.TestCase):
         self.assertIsNotNone(ical.master(cal).get("RRULE"))
 
 
+def series(rrule, start="DTSTART;TZID=Europe/Moscow:20260930T100000", *extra):
+    return ical.parse("BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\n%s\r\nRRULE:%s\r\n%s"
+                      "END:VEVENT\r\nEND:VCALENDAR\r\n" % (start, rrule, "".join(x + "\r\n" for x in extra))
+                      ).find("VEVENT")[0]
+
+
+class Occurrences(unittest.TestCase):
+    """RRULE expanded here: Yandex ignores <C:expand>."""
+    UNTIL = datetime(2026, 10, 20, tzinfo=UTC)
+
+    def keys(self, ve, until=UNTIL):
+        return [ical.stamp(w)[0] for w in ical.occurrences(ve, until)]
+
+    def test_weekdays_with_exdates(self):
+        # Yandex's daily stand-up: WEEKLY on MO-FR, a skipped day as a TZID EXDATE.
+        ve = series("FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;INTERVAL=1", "DTSTART;TZID=Europe/Moscow:20260930T100000",
+                    "EXDATE;TZID=Europe/Moscow:20261002T100000,20261006T100000")
+        self.assertEqual(self.keys(ve, datetime(2026, 10, 8, tzinfo=UTC)),
+                         ["20260930T070000Z", "20261001T070000Z", "20261005T070000Z", "20261007T070000Z"])
+
+    def test_every_other_week_counts_weeks_from_the_start(self):
+        ve = series("FREQ=WEEKLY;BYDAY=TU;INTERVAL=2", "DTSTART;TZID=Asia/Novosibirsk:20260714T150000")
+        self.assertEqual(self.keys(ve, datetime(2026, 8, 20, tzinfo=UTC)),
+                         ["20260714T080000Z", "20260728T080000Z", "20260811T080000Z"])
+
+    def test_weekly_without_byday_keeps_the_start_weekday(self):
+        ve = series("FREQ=WEEKLY;COUNT=3")
+        self.assertEqual(self.keys(ve), ["20260930T070000Z", "20261007T070000Z", "20261014T070000Z"])
+
+    def test_count_includes_exdates(self):
+        ve = series("FREQ=DAILY;COUNT=3", "DTSTART;TZID=Europe/Moscow:20260930T100000",
+                    "EXDATE;TZID=Europe/Moscow:20261001T100000")
+        self.assertEqual(self.keys(ve), ["20260930T070000Z", "20261002T070000Z"])
+
+    def test_until_is_inclusive(self):
+        ve = series("FREQ=DAILY;INTERVAL=2;UNTIL=20261004T070000Z")
+        self.assertEqual(self.keys(ve), ["20260930T070000Z", "20261002T070000Z", "20261004T070000Z"])
+
+    def test_wall_time_kept_across_dst(self):
+        ve = series("FREQ=WEEKLY;COUNT=2", "DTSTART;TZID=Europe/Berlin:20261022T100000")
+        self.assertEqual(self.keys(ve, datetime(2026, 11, 1, tzinfo=UTC)), ["20261022T080000Z", "20261029T090000Z"])
+
+    def test_all_day(self):
+        ve = series("FREQ=WEEKLY;BYDAY=MO,FR;UNTIL=20261010", "DTSTART;VALUE=DATE:20261002")
+        self.assertEqual(self.keys(ve), ["20261002", "20261005", "20261009"])
+
+    def test_unsupported_rule_is_none(self):
+        self.assertIsNone(ical.occurrences(series("FREQ=MONTHLY;BYMONTHDAY=1"), self.UNTIL))
+        self.assertIsNone(ical.occurrences(series("FREQ=WEEKLY;BYSETPOS=1;BYDAY=MO"), self.UNTIL))
+
+
 if __name__ == "__main__":
     unittest.main()
