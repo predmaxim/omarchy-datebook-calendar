@@ -15,10 +15,8 @@ import urllib.parse
 from . import auth, caldav, sync
 
 GOOGLE = "https://www.googleapis.com/calendar/v3"
-GRAPH = "https://graph.microsoft.com/v1.0"
 
 ANSWERS = {"accept": "accepted", "tentative": "tentative", "decline": "declined"}
-GRAPH_ACTIONS = {"accept": "accept", "tentative": "tentativelyAccept", "decline": "decline"}
 
 
 class EditError(RuntimeError):
@@ -47,9 +45,7 @@ def locate(uid):
 def token(a):
     if a["provider"] == "google":
         return auth.google_access(a)
-    if a["provider"] == "caldav":
-        return auth.caldav_access(a)
-    return auth.ms_access(a)
+    return auth.caldav_access(a)
 
 
 def _object(e, eid):
@@ -83,12 +79,9 @@ def respond(uid, answer, series=False):
     tok = token(a)
     if a["provider"] == "google":
         _google_respond(tok, e["calendar"], target, ANSWERS[answer])
-    elif a["provider"] == "caldav":
+    else:
         href, rid = _object(e, eid)
         _restamp(a, e, href, caldav.respond(tok, href, e.get("etag"), rid, answer, series))
-    else:
-        auth.send_json("POST", GRAPH + "/me/calendars/%s/events/%s/%s" % (q(e["calendar"]), q(target), GRAPH_ACTIONS[answer]),
-                       tok, {"sendResponse": True})
     _apply(a["name"], lambda x: x["uid"] == uid or series and x.get("seriesId") == e["seriesId"],
            {"response": ANSWERS[answer]})
 

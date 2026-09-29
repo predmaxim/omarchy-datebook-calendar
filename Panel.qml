@@ -1484,7 +1484,7 @@ Panel {
                   wrapMode: Text.WordWrap
                   textFormat: Text.PlainText
                   text: modelData.name + ": " + (modelData.status === "signin"
-                    ? root.tr("sign-in needed (calendar-ctl add-%1 %2 …)", ({google: "google", caldav: "yandex"}[modelData.provider] || "microsoft"), modelData.name)
+                    ? root.tr("sign-in needed (calendar-ctl add-%1 %2 …)", ({google: "google", caldav: "yandex"}[modelData.provider] || "yandex"), modelData.name)
                     : modelData.status === "offline" ? root.tr("offline, showing the last copy") : root.tr("couldn't sync"))
                   color: Color.urgent
                   font.family: root.contentFontFamily

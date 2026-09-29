@@ -1,4 +1,4 @@
-"""The sync side: join links, Graph's timestamps, and de-duplication.
+"""The sync side: join links, timestamps, and de-duplication.
 
     python3 -B -m unittest discover -s tests -p '*_test.py'
 """
@@ -37,9 +37,6 @@ class JoinLinks(unittest.TestCase):
 
 
 class Instants(unittest.TestCase):
-    def test_graph_seven_digit_fraction(self):
-        self.assertEqual(utc_iso(parse_instant("2026-09-28T14:00:00.0000000", assume_utc=True)), "2026-09-28T14:00:00Z")
-
     def test_offset(self):
         self.assertEqual(utc_iso(parse_instant("2026-09-28T10:00:00-04:00")), "2026-09-28T14:00:00Z")
 
