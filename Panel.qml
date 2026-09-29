@@ -1329,7 +1329,7 @@ Panel {
                   height: Math.max(eventText.implicitHeight, rowButtons.height) + Style.space(8)
                   radius: Style.cornerRadius
                   color: rowMouse.containsMouse ? Style.hoverFillFor(root.contentForeground, Color.accent) : "transparent"
-                  opacity: modelData.declined ? 0.5 : 1
+                  opacity: modelData.declined ? 0.5 : Model.isPast(modelData, root.clockNow.getTime()) ? 0.6 : 1
 
                   Rectangle {
                     id: colorBar

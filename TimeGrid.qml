@@ -131,7 +131,7 @@ Item {
             height: Style.space(18)
             radius: Style.cornerRadius
             color: Qt.rgba(Qt.color(modelData.color).r, Qt.color(modelData.color).g, Qt.color(modelData.color).b, 0.28)
-            opacity: modelData.declined ? 0.5 : 1
+            opacity: modelData.declined ? 0.5 : Model.isPast(modelData, grid.now.getTime()) ? 0.6 : 1
 
             Text {
               anchors.fill: parent
@@ -260,7 +260,7 @@ Item {
               height: Math.max(Style.space(16), (modelData.bottom - modelData.top) / 60 * grid.hourHeight - 2)
               radius: Style.cornerRadius
               color: Qt.rgba(Qt.color(ev.color).r, Qt.color(ev.color).g, Qt.color(ev.color).b, blockMouse.containsMouse ? 0.42 : 0.28)
-              opacity: ev.declined ? 0.45 : 1
+              opacity: ev.declined ? 0.45 : Model.isPast(ev, grid.now.getTime()) ? 0.6 : 1
               clip: true
 
               Rectangle {

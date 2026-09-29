@@ -4,7 +4,7 @@ const fs = require("fs")
 const path = require("path")
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8")
 const M = new Function(src + "; return { nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english," +
-  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify, answerLabel, isInvitation, boldTime }")()
+  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify, answerLabel, isInvitation, boldTime, isPast }")()
 const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "I18n.js"), "utf8").replace(/^\.pragma.*$/m, "")
 const I = new Function(i18nSrc + "; return { translator, textLanguage, formatLocaleName, TABLES }")()
 
@@ -19,6 +19,19 @@ function eq(got, want, name) {
 eq(M.boldTime("29 сент., Вт 09:44"), "29 сент., Вт <b>09:44</b>", "boldTime: date and time")
 eq(M.boldTime("Mon 9:05:30 PM"), "Mon <b>9:05:30 PM</b>", "boldTime: seconds and AM/PM")
 eq(M.boldTime("a<b & c"), "a&lt;b &amp; c", "boldTime: no time, markup escaped")
+
+// Past events: over once their end has come; all-day ones the day after.
+{
+  const nowMs = new Date(2026, 8, 28, 9, 50).getTime(), day = M.keyForDate(new Date(nowMs))
+  const t = (h, m, dd) => new Date(2026, 8, 28 + (dd || 0), h, m).toISOString()
+  eq(M.isPast({ start: t(8, 0), end: t(9, 0) }, nowMs), true, "isPast: ended earlier today")
+  eq(M.isPast({ start: t(9, 0), end: t(9, 50) }, nowMs), true, "isPast: ends right now")
+  eq(M.isPast({ start: t(9, 30), end: t(10, 0) }, nowMs), false, "isPast: on now")
+  eq(M.isPast({ start: t(22, 0, -2), end: t(12, 0) }, nowMs), false, "isPast: multi-day, still on")
+  eq(M.isPast({ start: M.addDays(day, -1), end: day, allDay: true }, nowMs), true, "isPast: all-day yesterday")
+  eq(M.isPast({ start: day, end: M.addDays(day, 1), allDay: true }, nowMs), false, "isPast: all-day today")
+  eq(M.isPast({ start: M.addDays(day, -1), end: M.addDays(day, -1), allDay: true }, nowMs), true, "isPast: all-day, end not after start")
+}
 
 // Next up.
 const now = new Date(2026, 8, 28, 9, 50), k = M.keyForDate(now)

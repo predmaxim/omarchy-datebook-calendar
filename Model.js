@@ -599,6 +599,16 @@ function startMs(e) {
   return e.allDay ? keyToDate(e.start).getTime() : new Date(e.start).getTime()
 }
 
+// Over once the whole event has ended: a multi-day one only after its last
+// day, an all-day one (end is the day after, or missing) from the next day.
+function isPast(row, nowMs) {
+  if (String(row.start).length === 10) {
+    var end = row.end > row.start ? row.end : addDays(row.start, 1)
+    return keyToDate(end).getTime() <= nowMs
+  }
+  return new Date(row.end).getTime() <= nowMs
+}
+
 // Reminders that are due now and haven't fired: [{id, event, minutes}], where
 // minutes is how long until the start (negative once it has begun).
 function dueReminders(data, calendars, nowMs, fired) {
