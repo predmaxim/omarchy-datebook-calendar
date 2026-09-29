@@ -676,15 +676,19 @@ Panel {
 
               Text {
                 id: heroDate
-                textFormat: Text.PlainText
+                // The bar's own label ("29 сент, Вт, 11:49", its format
+                // setting), time in bold as on the bar; the widget keeps it
+                // current to the minute. Just the date if the panel runs bare.
+                textFormat: Text.StyledText
                 anchors.verticalCenter: parent.verticalCenter
-                text: root.today.toLocaleDateString(root.labelLocale, root.labelLocale.name === "en_US" ? "MMMM d" : "d MMMM")
+                text: root.hostWidget && root.hostWidget.displayText
+                  ? Model.boldTime(root.hostWidget.displayText)
+                  : root.today.toLocaleDateString(root.labelLocale, root.labelLocale.name === "en_US" ? "MMMM d" : "d MMMM")
                 color: heroMouse.containsMouse
                   ? Style.hoverStateColor(root.contentForeground, Color.accent)
                   : root.contentForeground
                 font.family: root.contentFontFamily
-                font.pixelSize: 52
-                font.bold: true
+                font.pixelSize: 44
               }
             }
 
