@@ -1,31 +1,13 @@
-# Datebook (read-only) — Yandex and Google calendars in Omarchy's clock
+# Datebook Calendar for Omarchy
 
-A read-only calendar based on [Datebook](https://github.com/jonspinks/omarchy-calendar) by Jon Spinks.
-Click the clock and your week is there, with a Join button when a meeting is
-about to start. Events are never created, edited or deleted from here; the
-one thing it sends back is your answer to an invitation (Accept, Maybe,
-Decline). For anything else, **Open in Web** takes you to the event in the
-calendar's own web app.
+A calendar in Omarchy's top bar for looking, not editing. Click the date and
+you see today's meetings with a Join button for each. Expand it for a week,
+month or year of Yandex, Google and any CalDAV calendars.
 
-![Datebook: your week, what's next, and a reminder you can join from](preview.png)
+![Compact view: the month and today's meetings](screenshots/compact.png)
 
-## What you get
-
-- **Day, week, working week, month and year**, switched with the buttons or
-  keys 1 to 5. Overlapping meetings sit side by side.
-- **An event card**: click an event for its time, calendar (and where else the
-  same event is), place and clickable links, with **Join**, **Open in Web** and,
-  for invitations, one button with your answer (or Choose) that opens Accept /
-  Maybe / Decline; a recurring invitation is answered for the whole series.
-- **Compact view**: each of the day's events on one line, with its time and an
-  icon-only Join; expand, sync and calendars as icons down the right.
-- **Reminders you can join from**, and snooze.
-- **Language.** Text follows the system language (`LC_MESSAGES`; English and
-  Russian so far), dates follow its formats (`LC_TIME`): with
-  `LANG=en_US.UTF-8` and `LC_TIME=ru_RU.UTF-8` the buttons read "Today" and
-  "Join" and the dates "29 сентября".
-- **Private.** It talks straight to Yandex or Google from your machine; sign-ins
-  live in the system keyring. See [PRIVACY.md](PRIVACY.md).
+It never creates, changes or deletes events. The only thing it writes back
+is your answer to an invitation.
 
 ## Install
 
@@ -36,60 +18,99 @@ omarchy plugin enable predmaxim.datebook --before omarchy.clock
 omarchy plugin disable omarchy.clock
 ```
 
-## Sign in
+## Connect a calendar
 
 ```bash
 C=~/.config/omarchy/plugins/predmaxim.datebook/scripts/calendar-ctl
-$C add-yandex Yandex you@example.ru      # paste an app password (id.yandex.ru → Security → App passwords → Calendar)
-$C add-caldav Home https://dav.example.org/ you [email]   # any other CalDAV server
-$C add-google Personal ~/Downloads/client_secret_*.json   # a Desktop OAuth client of your own
+
+$C add-yandex Work you@example.ru                        # asks for an app password
+$C add-caldav Home https://dav.example.org/ you [email]  # any CalDAV server
+$C add-google Personal ~/Downloads/client_secret_*.json  # your own OAuth client
 $C sync
 ```
 
-For Google, make a project in the Google Cloud Console, enable the **Google
-Calendar API**, set up the OAuth consent screen with the scope
-`https://www.googleapis.com/auth/calendar` (answers to invitations are a
-write), publish it **In production**, and create an OAuth client ID of type
-**Desktop app**.
+- **Yandex:** make an app password at id.yandex.ru → Security → App passwords
+  → Calendar.
+- **Google:** in the Google Cloud Console create a project, turn on the
+  Google Calendar API, set up the consent screen with the scope
+  `https://www.googleapis.com/auth/calendar` (answering an invitation is a
+  write), publish it *In production*, then create an OAuth client of type
+  *Desktop app* and download its JSON.
 
-Yandex doesn't expand recurring events for CalDAV clients, so the plugin does
-(daily and weekly rules; other rules show only their moved or edited
-occurrences). Yandex doesn't send its reminders over CalDAV.
+## What's inside
 
-## Using it
+**Week, month, year.** The expand button opens the big view: day, week, work
+week, month and year, with calendars to tick on the left and the next meeting
+at the top.
 
-- **Calendars:** click one in the list on the left to show or hide it, or
-  `calendar-ctl choose` for a checklist. A hidden calendar isn't downloaded.
-- **Keys:** `1`–`5` views, `[` `]` or the arrows to step, `t` today, `w` the
-  first day of the week; Esc or Enter closes an event card.
-- **Sync** runs every three minutes and when you open the calendar;
-  `calendar-ctl sync` runs one by hand.
-- **Settings** (the widget's entry in `shell.json`, all optional):
-  `"layout": "classic"`, `"reminders": false`, `"view"`, and `"format"` (the
-  clock's format; its 12- or 24-hour choice carries into the calendar).
-- **IPC:** `qs ipc -p /usr/share/omarchy/shell call predmaxim.datebook view week`
-  (also `toggle`, `compact`, `expand`, `showEvent <uid>`).
+![Week view](screenshots/week.png)
+
+**Event card.** Click an event to see its time, calendar, place and links.
+From the card you can join, open the event on the web, or answer an
+invitation (for a recurring one, the answer covers the whole series).
+
+![Event card of an invitation](screenshots/card.png)
+
+**Reminders** pop up before a meeting; click one to join, or snooze it.
+
+**Language.** Buttons follow the system language (`LC_MESSAGES`, English or
+Russian), dates follow `LC_TIME`. The screenshots use English text with
+Russian dates.
+
+![Month view](screenshots/month.png)
+
+## Controls
+
+| | |
+|---|---|
+| `1`–`5` | day, week, work week, month, year |
+| `[` `]`, arrows | previous / next |
+| `t` | today |
+| `w` | first day of the week |
+| Esc, Enter | close the event card |
+
+Sync runs every 3 minutes and when you open the calendar; `calendar-ctl sync`
+runs it by hand. `calendar-ctl choose` picks calendars from the terminal;
+hidden calendars aren't downloaded.
+
+Optional settings in the widget's entry in `shell.json`: `"format"` (the date
+on the bar; 12/24-hour carries into the calendar), `"view"`,
+`"layout": "classic"`, `"reminders": false`.
+
+From scripts: `qs ipc -p /usr/share/omarchy/shell call predmaxim.datebook <cmd>`,
+where `<cmd>` is `toggle`, `compact`, `expand`, `view week` or `showEvent <uid>`.
+
+## Your data
+
+Everything stays on your computer; there's no server behind this plugin.
+Passwords and tokens are kept in the system keyring. The account list lives in
+`~/.config/predmaxim.datebook/`, a copy of your events in
+`~/.cache/predmaxim.datebook/`, and both are readable only by you. Google access
+can be revoked at myaccount.google.com/permissions; for Yandex, delete the app
+password.
 
 ## Remove
 
 ```bash
 C=~/.config/omarchy/plugins/predmaxim.datebook/scripts/calendar-ctl
-$C list && $C remove Yandex             # each account: deletes its keyring entry
+$C list && $C remove Work            # for each account: drops its keyring entry
 omarchy plugin remove predmaxim.datebook
 omarchy plugin enable omarchy.clock --section center
+rm -rf ~/.config/predmaxim.datebook ~/.cache/predmaxim.datebook
 ```
 
-Left afterwards: `~/.config/predmaxim.datebook/` (account list, no secrets)
-and `~/.cache/predmaxim.datebook/` (the event copy); both are safe to delete.
+## Notes
 
-## How it works
+- Yandex sends recurring meetings as rules and doesn't expand them itself, so
+  the plugin expands daily and weekly series on its own. Other rules show only
+  their moved or edited occurrences. Yandex doesn't send its reminders over
+  CalDAV.
+- Code: `scripts/omcal/` syncs (`caldav.py`, `ical.py`, `google.py`) into
+  `~/.cache/predmaxim.datebook/events.json`, which the QML widget reads.
+  Tests: `tests/run.sh`.
 
-`scripts/omcal/` does the talking: CalDAV (`caldav.py`, with recurring series
-expanded in `ical.py`) and Google (`google.py`). A copy of the next four months
-and the last five weeks lives in `~/.cache/predmaxim.datebook/`, and the widget
-reads one file from it. `tests/run.sh` runs the tests (node and Python).
+## Credits
 
-## License
-
-MIT — see [LICENSE](LICENSE). Parts of the panel are derived from Omarchy's
-own clock (MIT).
+It grew out of [Datebook](https://github.com/jonspinks/omarchy-calendar) by
+Jon Spinks; parts of the panel come from Omarchy's own clock. MIT, see
+[LICENSE](LICENSE).
