@@ -41,7 +41,7 @@ Item {
     linkColor: Color.accent
     color: card.foreground
     font.family: card.fontFamily
-    font.pixelSize: Style.font.body
+    font.pixelSize: Style.font.heading
     onLinkActivated: function(link) { card.openLink(link) }
 
     HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
@@ -71,7 +71,7 @@ Item {
 
     Line {
       plain: card.event ? card.event.title : ""
-      font.pixelSize: Style.font.title
+      font.pixelSize: Style.font.display
       font.bold: true
     }
 
