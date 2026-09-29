@@ -44,6 +44,23 @@ function openCommand(url) {
 // Locale.Saturday, so a locale's firstDayOfWeek can be passed straight in.
 var WEEKDAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
 
+// Day and month names come from the format locale (LC_TIME), not from the
+// text language: a Qt Locale, or anything with its name, dayName(i, format)
+// and monthName(i, format) (format 0 long, 1 short). English without one.
+var ENGLISH_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+var ENGLISH_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August",
+                      "September", "October", "November", "December"]
+var ENGLISH_LOCALE = {
+  name: "en_US",
+  dayName: function (i, f) { return f === 1 ? ENGLISH_DAYS[i].substr(0, 3) : ENGLISH_DAYS[i] },
+  monthName: function (i, f) { return f === 1 ? ENGLISH_MONTHS[i].substr(0, 3) : ENGLISH_MONTHS[i] }
+}
+
+function names(locale) { return locale || ENGLISH_LOCALE }
+
+// "сент." reads "сент" in a heading.
+function shortMonth(month, locale) { return String(names(locale).monthName(month, 1)).replace(/\.$/, "") }
+
 // ---- Bar label formats. Right-clicking the clock walks these in order and
 //      writes the result back to shell.json, so the label the bar shows and
 //      the format the config stores are always the same thing.
@@ -479,20 +496,16 @@ function stepAnchor(view, anchorKey, delta) {
   return keyForDate(new Date(d.getFullYear() + delta, 0, 1))
 }
 
-var MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-
-function shortDay(key, tr) {
+function shortDay(key, locale) {
   var d = keyToDate(key)
-  return d.getDate() + " " + (tr || english)(MONTHS_SHORT[d.getMonth()])
+  return d.getDate() + " " + shortMonth(d.getMonth(), locale)
 }
 
-function rangeTitle(view, anchorKey, weekStart, tr) {
+function rangeTitle(view, anchorKey, weekStart, tr, locale) {
   tr = tr || english
   var d = keyToDate(anchorKey)
-  if (view === "day") {
-    var names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-    return tr(names[d.getDay()]) + " " + shortDay(anchorKey, tr) + " " + d.getFullYear()
-  }
+  if (view === "day")
+    return names(locale).dayName(d.getDay(), 0) + " " + shortDay(anchorKey, locale) + " " + d.getFullYear()
   if (view === "week" || view === "workweek") {
     var days = viewDays(view, anchorKey, weekStart)
     // Numbered like the month grid's rows: by the ISO week owning Thursday.
@@ -500,7 +513,7 @@ function rangeTitle(view, anchorKey, weekStart, tr) {
     for (var t = 0; t < days.length; t++)
       if (keyToDate(days[t]).getDay() === 4) { a = keyToDate(days[t]); break }
     return tr("Week %1 · ", isoWeek(a.getFullYear(), a.getMonth(), a.getDate()))
-      + shortDay(days[0], tr) + " – " + shortDay(days[days.length - 1], tr)
+      + shortDay(days[0], locale) + " – " + shortDay(days[days.length - 1], locale)
   }
   if (view === "month") return ""
   return String(d.getFullYear())
@@ -645,7 +658,7 @@ function reminderText(r, calName, use24h, tr) {
 
 // ---- Next up: the meeting on now, or the next one within a week. All-day
 //      and declined events don't count; a meeting counts until it ends.
-function nextUp(byDay, now, use24h, tr) {
+function nextUp(byDay, now, use24h, tr, locale) {
   var nowMs = now.getTime()
   var key = keyForDate(now)
   for (var d = 0; d < 8; d++) {
@@ -658,13 +671,13 @@ function nextUp(byDay, now, use24h, tr) {
       if (e <= nowMs) continue
       if (!best || s < best.s) best = { row: r, s: s, e: e }
     }
-    if (best) return { event: best.row, when: nextUpWhen(best.s, best.e, now, use24h, tr), live: best.s <= nowMs,
+    if (best) return { event: best.row, when: nextUpWhen(best.s, best.e, now, use24h, tr, locale), live: best.s <= nowMs,
                        soon: best.s > nowMs && best.s - nowMs <= 15 * 60000 }
   }
   return null
 }
 
-function nextUpWhen(s, e, now, use24h, tr) {
+function nextUpWhen(s, e, now, use24h, tr, locale) {
   tr = tr || english
   var nowMs = now.getTime()
   var mins = Math.round((s - nowMs) / 60000)
@@ -677,116 +690,39 @@ function nextUpWhen(s, e, now, use24h, tr) {
   var at = clockLabel(start, use24h)
   if (dk === today) return mins < 180 ? tr("In %1 h %2 min · %3", Math.floor(mins / 60), mins % 60, at) : tr("Today · %1", at)
   if (dk === addDays(today, 1)) return tr("Tomorrow · %1", at)
-  return tr(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][start.getDay()]) + " · " + at
+  return names(locale).dayName(start.getDay(), 1) + " · " + at
 }
 
-// ---- The event editor. A draft is plain fields, as typed; draftArgs turns
-//      it into calendar-ctl arguments, sending only what changed.
+// ---- The event card.
 
-// "9", "9:30", "0930", "14:30", "2pm", "2:30 pm" -> minutes after midnight, or -1.
-function parseClock(text) {
-  var m = String(text || "").trim().toLowerCase().match(/^(\d{1,2})(?::?(\d{2}))?\s*(am|pm|a|p)?$/)
-  if (!m) return -1
-  var h = Number(m[1]), min = m[2] ? Number(m[2]) : 0
-  if (min > 59) return -1
-  if (m[3]) {
-    if (h < 1 || h > 12) return -1
-    h = h % 12 + (m[3].charAt(0) === "p" ? 12 : 0)
-  } else if (h > 23) return -1
-  return h * 60 + min
+// "Вторник, 29 сентября"; in American English "Tuesday, September 29".
+function dateLabel(date, locale) {
+  var n = names(locale)
+  var day = capitalize(String(n.dayName(date.getDay(), 0))), month = n.monthName(date.getMonth(), 0)
+  return day + ", " + (n.name === "en_US" ? month + " " + date.getDate() : date.getDate() + " " + month)
 }
 
-// "2026-10-02" (or "2026-10-2") -> "2026-10-02", or "" when it isn't a real date.
-function parseDateText(text) {
-  var m = String(text || "").trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
-  if (!m) return ""
-  var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
-  if (d.getMonth() !== Number(m[2]) - 1 || d.getDate() !== Number(m[3])) return ""
-  return keyForDate(d)
-}
-
-function clockInput(minutes) {
-  return pad(Math.floor(minutes / 60)) + ":" + pad(minutes % 60)
-}
-
-function minutesOf(date) { return date.getHours() * 60 + date.getMinutes() }
-
-// A draft from an agenda/grid row (see indexEvents).
-function eventDraft(ev) {
-  var d = {
-    mode: "edit", uid: ev.uid, calendar: ev.account + "/" + ev.calendar,
-    title: ev.title === "(no title)" ? "" : ev.title, location: ev.location || "",
-    allDay: String(ev.start).length === 10, invite: "", series: false, recurring: !!ev.recurring,
-    busy: ev.busy !== false
-  }
-  if (d.allDay) {
-    d.date = ev.start; d.endDate = addDays(ev.end, -1); d.from = "09:00"; d.to = "10:00"
-  } else {
-    var s = new Date(ev.start), e = new Date(ev.end)
-    d.date = keyForDate(s); d.endDate = keyForDate(e)
-    d.from = clockInput(minutesOf(s)); d.to = clockInput(minutesOf(e))
-  }
-  d.original = { title: d.title, location: d.location, allDay: d.allDay, busy: d.busy,
-                 date: d.date, endDate: d.endDate, from: d.from, to: d.to }
-  return d
-}
-
-// A new event on dayKey: the next whole hour today, 9am on any other day.
-function newDraft(dayKey, now, calendarRef) {
-  var start = dayKey === keyForDate(now) ? Math.min(23 * 60, (now.getHours() + 1) * 60) : 9 * 60
-  return { mode: "create", uid: "", calendar: calendarRef || "", title: "", location: "",
-           allDay: false, date: dayKey, endDate: dayKey,
-           from: clockInput(start), to: clockInput(Math.min(start + 60, 23 * 60 + 59)),
-           invite: "", series: false, recurring: false, busy: true, original: null }
-}
-
-// { args: [...] } for calendar-ctl, or { error: "what to fix" }.
-function draftArgs(d, tr) {
+// When a row happens, in full. All-day rows end the day after their last day.
+function cardWhen(row, use24h, tr, locale) {
   tr = tr || english
-  var date = parseDateText(d.date), endDate = parseDateText(d.endDate || d.date)
-  if (!date) return { error: tr("The start date should look like 2026-10-02.") }
-  if (!endDate) return { error: tr("The end date should look like 2026-10-02.") }
-  var start, end
-  if (d.allDay) {
-    if (endDate < date) return { error: tr("The last day can't be before the first.") }
-    start = date; end = addDays(endDate, 1)
-  } else {
-    var f = parseClock(d.from), t = parseClock(d.to)
-    if (f < 0) return { error: tr("The start time should look like 14:30 or 2:30pm.") }
-    if (t < 0) return { error: tr("The end time should look like 15:30 or 3:30pm.") }
-    // An end at or before the start on the same day means it runs past midnight.
-    if (endDate === date && t <= f) endDate = addDays(date, 1)
-    if (endDate < date) return { error: tr("The end can't be before the start.") }
-    start = date + " " + clockInput(f); end = endDate + " " + clockInput(t)
+  if (String(row.start).length === 10) {
+    var last = addDays(row.end || row.start, -1)
+    var span = last > row.start ? dateLabel(keyToDate(row.start), locale) + " – " + dateLabel(keyToDate(last), locale)
+                                : dateLabel(keyToDate(row.start), locale)
+    return span + " · " + tr("All day")
   }
-  var args
-  if (d.mode === "create") {
-    if (!d.calendar) return { error: tr("Pick a calendar.") }
-    args = ["create", d.calendar, "--title", d.title, "--start", start, "--end", end]
-    if (d.allDay) args.push("--all-day")
-    args.push(d.busy === false ? "--free" : "--busy")
-    if (d.location) args.push("--location", d.location)
-    var people = String(d.invite || "").split(/[\s,;]+/).filter(function(x) { return x })
-    for (var i = 0; i < people.length; i++) {
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(people[i])) return { error: tr("%1 isn't an email address.", people[i]) }
-      args.push("--invite", people[i])
-    }
-    return { args: args }
-  }
-  var o = d.original || {}
-  args = ["update", d.uid]
-  if (d.title !== o.title) args.push("--title", d.title)
-  if (d.location !== o.location) args.push("--location", d.location)
-  if (d.busy !== o.busy) args.push(d.busy ? "--busy" : "--free")
-  var timesChanged = d.allDay !== o.allDay || d.date !== o.date || d.endDate !== o.endDate
-                     || (!d.allDay && (d.from !== o.from || d.to !== o.to))
-  if (timesChanged) {
-    if (d.series) return { error: tr("A whole series can't be moved from here: untick it to move this one.") }
-    args.push("--start", start, "--end", end, d.allDay ? "--all-day" : "--timed")
-  }
-  if (args.length === 2) return { args: [] }   // nothing changed
-  if (d.series) args.push("--series")
-  return { args: args }
+  var s = new Date(row.start), e = new Date(row.end)
+  if (keyForDate(s) === keyForDate(e))
+    return dateLabel(s, locale) + " · " + clockLabel(s, use24h) + " – " + clockLabel(e, use24h)
+  return dateLabel(s, locale) + " " + clockLabel(s, use24h) + " – " + dateLabel(e, locale) + " " + clockLabel(e, use24h)
+}
+
+// This account's part in it; "" when it isn't on the guest list.
+function responseText(row, tr) {
+  tr = tr || english
+  if (row.organizer) return tr("You organise it")
+  return ({ accepted: tr("You accepted"), tentative: tr("You said maybe"), declined: tr("You declined"),
+            needsAction: tr("Not answered yet") })[row.response] || ""
 }
 
 if (typeof module !== "undefined") {
@@ -828,6 +764,11 @@ if (typeof module !== "undefined") {
     reminderTimes: reminderTimes,
     dueReminders: dueReminders,
     dueSnoozes: dueSnoozes,
-    reminderText: reminderText
+    reminderText: reminderText,
+    shortDay: shortDay,
+    nextUp: nextUp,
+    dateLabel: dateLabel,
+    cardWhen: cardWhen,
+    responseText: responseText
   }
 }

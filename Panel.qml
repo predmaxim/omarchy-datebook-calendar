@@ -1282,7 +1282,7 @@ Panel {
                 anchors.leftMargin: -Style.space(8)
                 anchors.verticalCenter: parent.verticalCenter
                 iconText: "󰅁"
-                tooltipText: root.tr("Previous " + ({day: "day", week: "week", workweek: "week", month: "month", year: "year"}[root.viewMode]))
+                tooltipText: root.tr({day: "Previous day", week: "Previous week", workweek: "Previous week", month: "Previous month", year: "Previous year"}[root.viewMode])
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
                 onClicked: root.step(-1)
@@ -1293,7 +1293,7 @@ Panel {
                 anchors.rightMargin: -Style.space(8)
                 anchors.verticalCenter: parent.verticalCenter
                 iconText: "󰅂"
-                tooltipText: root.tr("Next " + ({day: "day", week: "week", workweek: "week", month: "month", year: "year"}[root.viewMode]))
+                tooltipText: root.tr({day: "Next day", week: "Next week", workweek: "Next week", month: "Next month", year: "Next year"}[root.viewMode])
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
                 onClicked: root.step(1)

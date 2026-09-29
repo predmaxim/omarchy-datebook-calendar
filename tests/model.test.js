@@ -1,12 +1,12 @@
-// Model.js under node: the date, draft, reminder and "next up" logic.
+// Model.js under node: the date, card, reminder and "next up" logic.
 //   TZ=America/Toronto node tests/model.test.js
 const fs = require("fs")
 const path = require("path")
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8")
-const M = new Function(src + "; return { parseClock, parseDateText, eventDraft, newDraft, draftArgs," +
-  " nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english, rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize }")()
+const M = new Function(src + "; return { nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english," +
+  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText }")()
 const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "I18n.js"), "utf8").replace(/^\.pragma.*$/m, "")
-const I = new Function(i18nSrc + "; return { translator, language, localeName, TABLES }")()
+const I = new Function(i18nSrc + "; return { translator, textLanguage, formatLocaleName, TABLES }")()
 
 let failed = 0
 function eq(got, want, name) {
@@ -14,41 +14,6 @@ function eq(got, want, name) {
   if (!ok) failed++
   console.log((ok ? "ok   " : "FAIL ") + name + (ok ? "" : "\n     got  " + JSON.stringify(got) + "\n     want " + JSON.stringify(want)))
 }
-
-// Times and dates as typed.
-eq(["9", "9:30", "0930", "14:30", "2pm", "2:30 pm", "12am", "12pm", "24:00", "13pm", "9:75"].map(M.parseClock),
-   [540, 570, 570, 870, 840, 870, 0, 720, -1, -1, -1], "parseClock")
-eq(["2026-10-02", "2026-10-2", "2026-2-30", "x"].map(M.parseDateText), ["2026-10-02", "2026-10-02", "", ""], "parseDateText")
-
-// New events: options can't be smuggled in through a title.
-let d = M.newDraft("2026-10-02", new Date(2026, 8, 27, 21, 10), "Google/c")
-d.title = "--all-day"
-eq(M.draftArgs(d).args, ["create", "Google/c", "--title", "--all-day", "--start", "2026-10-02 09:00",
-                         "--end", "2026-10-02 10:00", "--busy"], "create: title stays a value")
-d.from = "23:00"; d.to = "1am"
-eq(M.draftArgs(d).args.slice(5, 8), ["2026-10-02 23:00", "--end", "2026-10-03 01:00"], "create: past midnight")
-d.allDay = true; d.endDate = "2026-10-03"; d.busy = false
-eq(M.draftArgs(d).args.slice(5, 10), ["2026-10-02", "--end", "2026-10-04", "--all-day", "--free"], "create: all-day ends the day after")
-d.invite = "a@b.co, bad"
-eq(M.draftArgs(d).error, "bad isn't an email address.", "create: bad guest")
-
-// Editing sends only what changed.
-const ev = { uid: "P/c/1", account: "P", calendar: "c", title: "T", location: "", busy: true, recurring: true,
-             start: "2026-09-29T02:45:00Z", end: "2026-09-29T03:15:00Z" }
-let e = M.eventDraft(ev)
-eq([e.date, e.from, e.to], ["2026-09-28", "22:45", "23:15"], "edit: shown in local time")
-eq(M.draftArgs(e).args, [], "edit: nothing changed")
-e.title = "New"
-eq(M.draftArgs(e).args, ["update", "P/c/1", "--title", "New"], "edit: title only")
-e.series = true
-eq(M.draftArgs(e).args, ["update", "P/c/1", "--title", "New", "--series"], "edit: series title")
-e.from = "22:00"
-eq(!!M.draftArgs(e).error, true, "edit: a series isn't moved")
-e.series = false; e.busy = false
-eq(M.draftArgs(e).args.slice(2), ["--title", "New", "--free", "--start", "2026-09-28 22:00",
-                                  "--end", "2026-09-28 23:15", "--timed"], "edit: move one, and free")
-const ad = M.eventDraft(Object.assign({}, ev, { start: "2026-10-05", end: "2026-10-07" }))
-eq([ad.allDay, ad.date, ad.endDate], [true, "2026-10-05", "2026-10-06"], "edit: all-day shows its last day")
 
 // Next up.
 const now = new Date(2026, 8, 28, 9, 50), k = M.keyForDate(now)
@@ -77,28 +42,64 @@ eq(back.length, 1, "snooze: due")
 eq(M.reminderText(back[0], "Work", false).body.indexOf("snoozed · "), 0, "snooze: labelled")
 eq(M.dueSnoozes({ events: [Object.assign({}, se, { end: iso(t - 1) })] }, { "snooze:a/c/1": t - 1 }, t).length, 0, "snooze: not after the end")
 
-// Languages.
+// Languages: text from LC_MESSAGES, formats from LC_TIME, as the system splits them.
+const envOf = vars => name => vars[name]
+const mine = envOf({ LANG: "en_US.UTF-8", LC_TIME: "ru_RU.UTF-8" })
+eq([I.textLanguage(mine), I.formatLocaleName(mine)], ["en", "ru_RU"], "locale: English text, Russian formats")
+eq([I.textLanguage(envOf({ LANG: "ru_RU.UTF-8" })), I.formatLocaleName(envOf({ LANG: "ru_RU.UTF-8" }))], ["ru", "ru_RU"], "locale: LANG alone")
+eq([I.textLanguage(envOf({ LC_ALL: "ru_RU.UTF-8", LC_MESSAGES: "en_US.UTF-8", LC_TIME: "de_DE.UTF-8" })),
+    I.formatLocaleName(envOf({ LC_ALL: "ru_RU.UTF-8", LC_TIME: "de_DE.UTF-8" }))], ["ru", "ru_RU"], "locale: LC_ALL wins")
+eq([I.textLanguage(envOf({ LANG: "C.UTF-8" })), I.formatLocaleName(envOf({})), I.textLanguage(envOf({ LC_MESSAGES: "de_DE@euro" }))],
+   ["en", "en_US", "en"], "locale: C, nothing, no table")
 const ru = I.translator("ru"), en = I.translator("en")
-eq([I.language("ru", "en_US"), I.language("", "ru_RU"), I.language("de", "de_DE"), I.language("", "")],
-   ["ru", "ru", "en", "en"], "language: setting, then locale, else English")
-eq([I.localeName("ru"), I.localeName("en")], ["ru_RU", "en_US"], "localeName")
 eq([ru("Today"), ru("In %1 min", 5), ru("No such string"), en("In %1 min", 5)],
    ["Сегодня", "Через 5 мин", "No such string", "In 5 min"], "tr: table, args, fallback")
 eq(Object.keys(I.TABLES.ru).filter(k => (k.match(/%\d/g) || []).sort().join() !== (I.TABLES.ru[k].match(/%\d/g) || []).sort().join()),
    [], "tr: every translation keeps its placeholders")
 
-// Russian through tr; English unchanged without it.
+// Every tr("…") literal has a Russian line, and no Russian line is left over.
+const sources = fs.readdirSync(path.join(__dirname, "..")).filter(f => /\.(qml|js)$/.test(f) && f !== "I18n.js")
+  .map(f => fs.readFileSync(path.join(__dirname, "..", f), "utf8")).join("\n")
+const used = new Set([...sources.matchAll(/\btr\("((?:[^"\\]|\\.)*)"\s*[,)]/g)].map(m => JSON.parse('"' + m[1] + '"')))
+eq([...used].filter(k => !(k in I.TABLES.ru)), [], "tr: every string translated")
+eq(Object.keys(I.TABLES.ru).filter(k => !sources.includes(JSON.stringify(k))), [], "tr: no unused translations")
+
+// A Russian format locale, as Qt's Locale gives its names (0 long, 1 short; months in the genitive).
+const RU = {
+  name: "ru_RU",
+  dayName: (i, f) => (f === 1 ? ["вс", "пн", "вт", "ср", "чт", "пт", "сб"]
+                              : ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"])[i],
+  monthName: (i, f) => (f === 1 ? ["янв.", "февр.", "мар.", "апр.", "мая", "июн.", "июл.", "авг.", "сент.", "окт.", "нояб.", "дек."]
+                                : ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"])[i]
+}
+
+// Text through tr, names through the format locale.
 by[k] = [{ title: "soon", start: at(10, 0), end: at(10, 30) }]; delete by[M.addDays(k, 1)]
-eq(M.nextUp(by, now, true, ru).when, "Через 10 мин", "nextUp: ru")
-eq(M.rangeTitle("week", "2026-10-07", 1, ru), "Неделя 41 · 5 окт – 11 окт", "rangeTitle: ru week")
+eq(M.nextUp(by, now, true, ru, RU).when, "Через 10 мин", "nextUp: ru")
+eq(M.rangeTitle("week", "2026-10-07", 1, ru, RU), "Неделя 41 · 5 окт – 11 окт", "rangeTitle: ru week")
+eq(M.rangeTitle("week", "2026-10-07", 1, en, RU), "Week 41 · 5 окт – 11 окт", "rangeTitle: English text, Russian months")
 eq(M.rangeTitle("week", "2026-10-07", 1), "Week 41 · 5 Oct – 11 Oct", "rangeTitle: English as before")
-eq(M.rangeTitle("day", "2026-10-07", 1, ru), "среда 7 окт 2026", "rangeTitle: ru day")
+eq(M.rangeTitle("day", "2026-10-07", 1, en, RU), "среда 7 окт 2026", "rangeTitle: day in the format locale")
+by[k] = []; by[M.addDays(k, 3)] = [{ title: "t", start: at(14, 30, 3), end: at(15, 0, 3) }]
+eq(M.nextUp(by, now, true, en, RU).when, "чт · 14:30", "nextUp: weekday from the format locale")
 eq(M.reminderText(back[0], "Работа", true, ru).body.indexOf("отложено · "), 0, "reminderText: ru")
-eq(M.draftArgs({ date: "x" }, ru).error, "Дата начала — в виде 2026-10-02.", "draftArgs: ru error")
 const allDayIdx = M.indexEvents({ calendars: [{ account: "a", id: "c", shown: true }],
   events: [{ uid: "a/c/1", account: "a", calendar: "c", title: "T", allDay: true, start: "2026-10-05", end: "2026-10-06", status: "confirmed" }] }, true, ru)
 eq([allDayIdx.byDay["2026-10-05"][0].label, allDayIdx.byDay["2026-10-05"][0].allDay], ["Весь день", true], "indexEvents: ru all-day stays all-day")
 eq(M.english("+%1 more", 3), "+3 more", "english: fills args")
+
+// The event card.
+eq(M.dateLabel(new Date(2026, 8, 29), RU), "Вторник, 29 сентября", "dateLabel: ru")
+eq(M.dateLabel(new Date(2026, 8, 29)), "Tuesday, September 29", "dateLabel: en_US")
+const timed = { start: new Date(2026, 8, 29, 10, 0).toISOString(), end: new Date(2026, 8, 29, 10, 15).toISOString() }
+eq(M.cardWhen(timed, true, en, RU), "Вторник, 29 сентября · 10:00 – 10:15", "cardWhen: timed")
+eq(M.cardWhen({ start: new Date(2026, 8, 29, 23, 0).toISOString(), end: new Date(2026, 8, 30, 1, 0).toISOString() }, true, en, RU),
+   "Вторник, 29 сентября 23:00 – Среда, 30 сентября 01:00", "cardWhen: past midnight")
+eq(M.cardWhen({ start: "2026-10-05", end: "2026-10-06" }, true, en, RU), "Понедельник, 5 октября · All day", "cardWhen: all day")
+eq(M.cardWhen({ start: "2026-10-05", end: "2026-10-08" }, true, ru, RU),
+   "Понедельник, 5 октября – Среда, 7 октября · Весь день", "cardWhen: several days, last day inclusive")
+eq(["organizer", "accepted", "tentative", "declined", "needsAction", "none"].map(r => M.responseText({ response: r, organizer: r === "organizer" }, en)),
+   ["You organise it", "You accepted", "You said maybe", "You declined", "Not answered yet", ""], "responseText")
 
 // Bar label names: capitalised days, month abbreviations without their dot.
 eq(M.namedFormat("d MMM, ddd HH:mm", "понедельник", "пн", "сент."), "d 'сент', 'Пн' HH:mm", "namedFormat: ru short")
@@ -114,7 +115,7 @@ eq(M.openCommand("https://calendar.yandex.ru/event?event_id=1"), ["xdg-open", "h
 eq(M.openCommand("https://telemost.yandex.ru.evil.example/j/1")[0], "xdg-open", "openCommand: lookalike host")
 
 // Headings: every caption has a Russian form; month names start upper-case.
-eq(["CALENDARS", "SHOW AS", "STARTS", "LAST DAY", "ENDS", "BORN", "LIVE TO", "LIFE"].filter(k => !(k in I.TABLES.ru)),
+eq(["CALENDARS", "EVENT", "BORN", "LIVE TO", "LIFE"].filter(k => !(k in I.TABLES.ru)),
    [], "tr: captions translated")
 eq([M.capitalize("сентябрь 2026"), M.capitalize("September"), M.capitalize("")], ["Сентябрь 2026", "September", ""], "capitalize")
 
