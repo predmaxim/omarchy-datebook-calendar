@@ -738,6 +738,11 @@ function cardCalendar(row, tr) {
   return parts.join("  ·  ")
 }
 
+// Someone else's event with this account on its guest list: it can be answered.
+function isInvitation(row) {
+  return !!row && !row.organizer && ["accepted", "tentative", "declined", "needsAction"].indexOf(row.response) >= 0
+}
+
 // The card's answer button: the answer made, or Choose when there is none yet.
 function answerLabel(row, tr) {
   tr = tr || english
@@ -799,6 +804,7 @@ if (typeof module !== "undefined") {
     cardCalendar: cardCalendar,
     linkify: linkify,
     answerLabel: answerLabel,
+    isInvitation: isInvitation,
     responseText: responseText
   }
 }

@@ -1362,37 +1362,6 @@ Panel {
                       font.pixelSize: Style.font.body
                       font.strikeout: eventRow.modelData.declined
                     }
-
-                    // An invitation not yet answered for sure: answer it here.
-                    // A recurring one is answered for the whole series.
-                    Row {
-                      visible: !eventRow.modelData.organizer
-                               && (eventRow.modelData.response === "needsAction" || eventRow.modelData.response === "tentative")
-                      topPadding: Style.space(3)
-                      bottomPadding: Style.space(2)
-                      spacing: Style.space(4)
-
-                      Repeater {
-                        model: [
-                          { answer: "accept", label: root.tr("Accept"), icon: "󰄬" },
-                          { answer: "tentative", label: root.tr("Maybe"), icon: "󰋗" },
-                          { answer: "decline", label: root.tr("Decline"), icon: "󰅖" }
-                        ]
-                        Button {
-                          required property var modelData
-                          visible: !(modelData.answer === "tentative" && eventRow.modelData.response === "tentative")
-                          enabled: root.writingUid === ""
-                          bordered: true
-                          iconText: modelData.icon
-                          text: root.writingUid === eventRow.modelData.uid ? "…" : modelData.label
-                          tooltipText: (eventRow.modelData.recurring ? root.tr("Every occurrence: ") : "")
-                                       + root.tr("%1 and let the organiser know", modelData.label)
-                          foreground: root.contentForeground
-                          fontFamily: root.contentFontFamily
-                          onClicked: root.respond(eventRow.modelData, modelData.answer, eventRow.modelData.recurring)
-                        }
-                      }
-                    }
                   }
 
                   // One line: the time, then Snooze and Join, on the right.
@@ -1425,6 +1394,16 @@ Panel {
                     foreground: root.contentForeground
                     fontFamily: root.contentFontFamily
                     onClicked: root.snooze(eventRow.modelData)
+                  }
+
+                  AnswerPicker {
+                    anchors.verticalCenter: parent.verticalCenter
+                    event: eventRow.modelData
+                    busy: root.writingUid !== ""
+                    foreground: root.contentForeground
+                    fontFamily: root.contentFontFamily
+                    tr: root.tr
+                    onRespond: function(a) { root.respond(eventRow.modelData, a, eventRow.modelData.recurring) }
                   }
 
                   Button {
