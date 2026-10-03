@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls as QC
 import qs.Commons
 import qs.Ui
 import "Model.js" as Model
@@ -35,23 +36,29 @@ Item {
     onClicked: picker.open = !picker.open
   }
 
-  Rectangle {
-    visible: picker.open
-    z: 10
-    anchors.bottom: parent.top
-    anchors.bottomMargin: Style.space(4)
-    width: choices.implicitWidth + Style.space(8)
-    height: choices.implicitHeight + Style.space(8)
-    radius: Style.cornerRadius
-    color: Color.popups.background
-    border.width: Style.spacing.hairline
-    border.color: Color.popups.border
+  onOpenChanged: if (open !== popup.visible) { open ? popup.open() : popup.close() }
 
-    MouseArea { anchors.fill: parent }   // clicks between the answers stay here
+  // A Popup lives in the window overlay and gets input first; a plain
+  // Rectangle with z would lose clicks to items declared later elsewhere.
+  QC.Popup {
+    id: popup
+    padding: Style.space(4)
+    // Above the button; below it when the panel has no room above.
+    y: picker.mapToItem(null, 0, 0).y < height + Style.space(4)
+       ? picker.height + Style.space(4) : -height - Style.space(4)
+    focus: true
+    closePolicy: QC.Popup.CloseOnEscape | QC.Popup.CloseOnPressOutsideParent   // the button toggles itself
+    onClosed: picker.open = false
 
-    Column {
+    background: Rectangle {
+      radius: Style.cornerRadius
+      color: Color.popups.background
+      border.width: Style.spacing.hairline
+      border.color: Color.popups.border
+    }
+
+    contentItem: Column {
       id: choices
-      anchors.centerIn: parent
       spacing: Style.space(2)
 
       Repeater {
