@@ -48,7 +48,8 @@ Item {
     onAboutToShow: {
       const p = picker.mapToItem(null, 0, 0)
       y = p.y < height + Style.space(4) ? picker.height + Style.space(4) : -height - Style.space(4)
-      x = Math.min(0, picker.Window.width - p.x - width)
+      const w = picker.Window.width
+      x = w > 0 ? Math.min(0, w - p.x - width) : 0
     }
     focus: true
     closePolicy: QC.Popup.CloseOnEscape | QC.Popup.CloseOnPressOutsideParent   // the button toggles itself
