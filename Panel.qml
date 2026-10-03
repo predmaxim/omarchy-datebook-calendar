@@ -661,7 +661,8 @@ Panel {
         Column {
           id: heroMenuColumn
           anchors.centerIn: parent
-          width: Math.max(menuExpand.implicitWidth, menuSync.implicitWidth, menuCalendars.implicitWidth)
+          width: Math.max(menuExpand.implicitWidth, menuSync.implicitWidth, menuCalendars.implicitWidth,
+                           menuFormat.implicitWidth, menuZone.implicitWidth)
           spacing: Style.spacing.xs
 
           Button {
@@ -695,6 +696,30 @@ Panel {
             foreground: root.contentForeground
             fontFamily: root.contentFontFamily
             onClicked: heroMenu.run(root.chooseCalendars)
+          }
+
+          Button {
+            id: menuFormat
+            width: parent.width
+            visible: !!root.hostWidget
+            leftAlign: true
+            iconText: "󰥔"
+            text: root.tr("Clock format")
+            foreground: root.contentForeground
+            fontFamily: root.contentFontFamily
+            onClicked: heroMenu.run(function() { root.hostWidget.cycleFormat() })
+          }
+
+          Button {
+            id: menuZone
+            width: parent.width
+            visible: !!(root.hostWidget && root.hostWidget.bar)
+            leftAlign: true
+            iconText: "󰥐"
+            text: root.tr("Time zone")
+            foreground: root.contentForeground
+            fontFamily: root.contentFontFamily
+            onClicked: heroMenu.run(function() { root.close(); root.hostWidget.bar.run("omarchy-menu-timezone") })
           }
         }
       }
@@ -742,10 +767,10 @@ Panel {
                   ? Style.hoverStateColor(root.contentForeground, Color.accent)
                   : root.contentForeground
                 font.family: root.contentFontFamily
-                // Decorative, and deliberately outside the Style.font.*
-                // scale. Sized so the glyph reads at the cap height of the
+                // Decorative, scaled off Style.font.displayLarge (48 at the
+                // base font). Sized so the glyph reads at the cap height of the
                 // date beside it rather than towering over it.
-                font.pixelSize: 48
+                font.pixelSize: Math.round(Style.font.displayLarge * 1.7)
               }
 
               Text {
@@ -762,7 +787,7 @@ Panel {
                   ? Style.hoverStateColor(root.contentForeground, Color.accent)
                   : root.contentForeground
                 font.family: root.contentFontFamily
-                font.pixelSize: 38
+                font.pixelSize: Math.round(Style.font.displayLarge * 1.35)
               }
             }
 
