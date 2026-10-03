@@ -69,7 +69,7 @@ Russian dates.
 | `[` `]`, arrows | previous / next |
 | `t` | today |
 | `w` | first day of the week |
-| `m` | ⋮ menu (↑/↓, Enter, Esc closes the menu) |
+| `m` | ⋮ menu (↑/↓, Enter, Esc closes the menu); its Settings view: ↑/↓ rows, Enter opens/runs, Esc back to the calendar |
 | Esc, Enter | close the event card |
 
 Sync runs every 3 minutes and when you open the calendar; `calendar-ctl sync`
