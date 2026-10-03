@@ -441,6 +441,7 @@ Panel {
   }
 
   function close() {
+    heroMenu.visible = false
     setCenterHoverRevealSuppressed(false)
     // Dismissing the panel mid-edit would otherwise leave the inputs up,
     // waiting behind a closed popup for the next time it opens.
@@ -628,6 +629,76 @@ Panel {
         p: root
       }
 
+      // Click anywhere off the menu closes it.
+      MouseArea {
+        anchors.fill: parent
+        visible: heroMenu.visible
+        z: 1
+        onClicked: heroMenu.visible = false
+      }
+
+      Rectangle {
+        id: heroMenu
+        visible: false
+        z: 2
+        width: heroMenuColumn.width + Style.spacing.xs * 2
+        height: heroMenuColumn.implicitHeight + Style.spacing.xs * 2
+        radius: Style.cornerRadius
+        color: Color.popups.background
+        border.color: Color.popups.border
+        border.width: Math.max(1, Style.space(2))
+
+        // Placed on opening: the button only has its final spot once laid out.
+        function toggle() {
+          var at = heroMenuButton.mapToItem(keyCatcher, heroMenuButton.width, heroMenuButton.height)
+          x = at.x - width
+          y = at.y + Style.space(4)
+          visible = !visible
+        }
+
+        function run(action) { visible = false; action() }
+
+        Column {
+          id: heroMenuColumn
+          anchors.centerIn: parent
+          width: Math.max(menuExpand.implicitWidth, menuSync.implicitWidth, menuCalendars.implicitWidth)
+          spacing: Style.spacing.xs
+
+          Button {
+            id: menuExpand
+            width: parent.width
+            leftAlign: true
+            iconText: "󰊓"
+            text: root.tr("Expand")
+            foreground: root.contentForeground
+            fontFamily: root.contentFontFamily
+            onClicked: heroMenu.run(function() { root.setLayout(true) })
+          }
+
+          Button {
+            id: menuSync
+            width: parent.width
+            leftAlign: true
+            iconText: syncProc.running ? "󰑓" : "󰑐"
+            text: root.tr(syncProc.running ? "Syncing…" : "Sync now")
+            foreground: root.contentForeground
+            fontFamily: root.contentFontFamily
+            onClicked: heroMenu.run(root.syncNow)
+          }
+
+          Button {
+            id: menuCalendars
+            width: parent.width
+            leftAlign: true
+            iconText: "󰃭"
+            text: root.tr("Calendars")
+            foreground: root.contentForeground
+            fontFamily: root.contentFontFamily
+            onClicked: heroMenu.run(root.chooseCalendars)
+          }
+        }
+      }
+
       Flickable {
         id: calendarScroll
         visible: !root.modern
@@ -713,39 +784,17 @@ Panel {
               }
             }
 
-            // Expand, sync and calendars: one above the other, at the right.
-            Column {
-              id: heroButtons
+            // Expand, sync and calendars live in one "⋯" menu at the right.
+            PanelActionButton {
+              id: heroMenuButton
               anchors.right: parent.right
-              anchors.top: parent.top
-              spacing: Style.space(2)
-
-              PanelActionButton {
-                iconText: "󰊓"
-                tooltipText: root.tr("Expand: week, month and year views, and your calendars")
-                foreground: root.contentForeground
-                fontFamily: root.contentFontFamily
-                fontSize: Style.font.display
-                onClicked: root.setLayout(true)
-              }
-
-              PanelActionButton {
-                iconText: syncProc.running ? "󰑓" : "󰑐"
-                tooltipText: root.tr(syncProc.running ? "Syncing…" : "Sync now")
-                foreground: root.contentForeground
-                fontFamily: root.contentFontFamily
-                fontSize: Style.font.display
-                onClicked: root.syncNow()
-              }
-
-              PanelActionButton {
-                iconText: "󰃭"
-                tooltipText: root.tr("Pick which calendars to show")
-                foreground: root.contentForeground
-                fontFamily: root.contentFontFamily
-                fontSize: Style.font.display
-                onClicked: root.chooseCalendars()
-              }
+              anchors.verticalCenter: parent.verticalCenter
+              iconText: "󰇙"
+              fontSize: Style.font.display
+              tooltipText: heroMenu.visible ? "" : root.tr("More")
+              foreground: root.contentForeground
+              fontFamily: root.contentFontFamily
+              onClicked: heroMenu.toggle()
             }
           }
 
