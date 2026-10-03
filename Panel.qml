@@ -605,13 +605,16 @@ Panel {
       anchors.fill: parent
       blocked: root.editingLife || root.cardOpen
       onMoveRequested: function(dx, dy) {
+        if (heroMenu.visible) { if (dy !== 0) heroMenu.move(dy); return }
         if (dx !== 0) root.step(dx)
         if (dy !== 0 && (root.viewMode === "month" || !root.modern)) root.moveYear(dy)
       }
-      onActivateRequested: root.goToToday()
-      onCloseRequested: root.close()
+      onActivateRequested: heroMenu.visible ? heroMenu.activate() : root.goToToday()
+      onCloseRequested: heroMenu.visible ? heroMenu.visible = false : root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
       onTextKey: function(t) {
+        if (t === "m" || t === "M") { if (!root.modern) heroMenu.toggle(); return }
+        if (heroMenu.visible) return
         if (t >= "1" && t <= "5") { root.setView(Model.VIEWS[Number(t) - 1]); root.setLayout(true) }
         else if (t === "[") root.step(-1)
         else if (t === "]") root.step(1)
@@ -653,8 +656,21 @@ Panel {
           var at = heroMenuButton.mapToItem(keyCatcher, heroMenuButton.width, heroMenuButton.height)
           x = at.x - width
           y = at.y + Style.space(4)
+          cursor = -1
           visible = !visible
         }
+
+        // Keyboard: m opens, ↑/↓ walk, Enter runs, Esc closes the menu only.
+        // Mouse hover drives the same cursor, so one highlight at a time.
+        property int cursor: -1
+        readonly property var items: [menuExpand, menuSync, menuCalendars, menuFormat, menuZone].filter(function(b) { return b.visible })
+        function move(dy) {
+          var n = items.length
+          cursor = cursor < 0 ? (dy > 0 ? 0 : n - 1) : Math.max(0, Math.min(n - 1, cursor + dy))
+        }
+        function activate() { if (cursor >= 0 && cursor < items.length) items[cursor].clicked() }
+        function hot(b) { return visible && items[cursor] === b }
+        function hover(b, h) { if (h) cursor = items.indexOf(b) }
 
         function run(action) { visible = false; action() }
 
@@ -667,6 +683,8 @@ Panel {
 
           Button {
             id: menuExpand
+            hasCursor: heroMenu.hot(menuExpand)
+            onHovered: function(h) { heroMenu.hover(menuExpand, h) }
             width: parent.width
             leftAlign: true
             iconText: "󰊓"
@@ -678,6 +696,8 @@ Panel {
 
           Button {
             id: menuSync
+            hasCursor: heroMenu.hot(menuSync)
+            onHovered: function(h) { heroMenu.hover(menuSync, h) }
             width: parent.width
             leftAlign: true
             iconText: syncProc.running ? "󰑓" : "󰑐"
@@ -689,6 +709,8 @@ Panel {
 
           Button {
             id: menuCalendars
+            hasCursor: heroMenu.hot(menuCalendars)
+            onHovered: function(h) { heroMenu.hover(menuCalendars, h) }
             width: parent.width
             leftAlign: true
             iconText: "󰃭"
@@ -700,6 +722,8 @@ Panel {
 
           Button {
             id: menuFormat
+            hasCursor: heroMenu.hot(menuFormat)
+            onHovered: function(h) { heroMenu.hover(menuFormat, h) }
             width: parent.width
             visible: !!root.hostWidget
             leftAlign: true
@@ -712,6 +736,8 @@ Panel {
 
           Button {
             id: menuZone
+            hasCursor: heroMenu.hot(menuZone)
+            onHovered: function(h) { heroMenu.hover(menuZone, h) }
             width: parent.width
             visible: !!(root.hostWidget && root.hostWidget.bar)
             leftAlign: true
@@ -767,10 +793,10 @@ Panel {
                   ? Style.hoverStateColor(root.contentForeground, Color.accent)
                   : root.contentForeground
                 font.family: root.contentFontFamily
-                // Decorative, scaled off Style.font.displayLarge (48 at the
-                // base font). Sized so the glyph reads at the cap height of the
+                // Decorative, scaled off Style.font.displayLarge (48 at
+                // this theme's 37). Sized so the glyph reads at the cap height of the
                 // date beside it rather than towering over it.
-                font.pixelSize: Math.round(Style.font.displayLarge * 1.7)
+                font.pixelSize: Math.round(Style.font.displayLarge * 1.3)
               }
 
               Text {
@@ -787,7 +813,7 @@ Panel {
                   ? Style.hoverStateColor(root.contentForeground, Color.accent)
                   : root.contentForeground
                 font.family: root.contentFontFamily
-                font.pixelSize: Math.round(Style.font.displayLarge * 1.35)
+                font.pixelSize: Math.round(Style.font.displayLarge * 1.03)
               }
             }
 
@@ -816,7 +842,7 @@ Panel {
               anchors.verticalCenter: parent.verticalCenter
               iconText: "󰇙"
               fontSize: Style.font.display
-              tooltipText: heroMenu.visible ? "" : root.tr("More")
+              tooltipText: heroMenu.visible ? "" : root.tr("More") + " (M)"
               foreground: root.contentForeground
               fontFamily: root.contentFontFamily
               onClicked: heroMenu.toggle()
