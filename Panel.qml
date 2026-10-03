@@ -647,7 +647,7 @@ Panel {
         : root.settingsOpen ? root.activateSetting(root.settingsCursor) : root.goToToday()
       onCloseRequested: heroMenu.visible ? heroMenu.visible = false
         : root.settingsOpen ? root.settingsOpen = false : root.close()
-      onTabRequested: function(direction) { root.switchPanel(direction) }
+      onTabRequested: function(direction) { if (!heroMenu.visible) root.switchPanel(direction) }
       onTextKey: function(t) {
         if (t === "m" || t === "M") { if (!root.modern && !root.settingsOpen) heroMenu.toggle(); return }
         if (heroMenu.visible || root.settingsOpen) return
