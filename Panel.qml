@@ -587,7 +587,7 @@ Panel {
     settingsCursor = settingsCursor < 0 ? 0 : Math.max(0, Math.min(2, settingsCursor + dy))
   }
   function activateSetting(i) {
-    if (i === 0) root.formatDropdown.open()
+    if (i === 0) { if (root.formatDropdown) root.formatDropdown.open() }
     else if (i === 1) { root.close(); if (root.bar) root.bar.run("omarchy-menu-timezone") }
     else if (i === 2) root.toggleWeekStart()
   }
@@ -778,10 +778,25 @@ Panel {
         anchors.right: parent.right
         spacing: Style.spacing.xs
 
-        PanelSectionHeader {
-          text: root.tr("Settings")
-          foreground: root.contentForeground
-          fontFamily: root.contentFontFamily
+        // Back for the mouse; Esc does the same from the keyboard.
+        Row {
+          spacing: Style.spacing.xs
+
+          Button {
+            anchors.verticalCenter: parent.verticalCenter
+            iconText: "󰁍"
+            tooltipText: root.tr("Back")
+            foreground: root.contentForeground
+            fontFamily: root.contentFontFamily
+            onClicked: root.settingsOpen = false
+          }
+
+          PanelSectionHeader {
+            anchors.verticalCenter: parent.verticalCenter
+            text: root.tr("Settings")
+            foreground: root.contentForeground
+            fontFamily: root.contentFontFamily
+          }
         }
 
         Repeater {
@@ -825,7 +840,7 @@ Panel {
               options: root.formatOptions
               value: root.hostWidget ? String(root.hostWidget.configuredFormat) : ""
               fontFamily: root.contentFontFamily
-              onChanged: function(v) { root.hostWidget.setFormat(v) }
+              onChanged: function(v) { if (root.hostWidget) root.hostWidget.setFormat(v) }
               onHovered: function(h) { if (h) root.settingsCursor = 0 }
               onPopupOpenChanged: if (!popupOpen) keyCatcher.forceActiveFocus()
               Component.onCompleted: if (settingRow.index === 0) root.formatDropdown = rowDropdown
