@@ -177,11 +177,8 @@ BarWidget {
     horizontalMargin: 8.75
     verticalPadding: 8.75
 
-    onPressed: function(b) {
-      if (b === Qt.RightButton) root.cycleFormat()
-      else if (b === Qt.MiddleButton) { if (root.bar) root.bar.run("omarchy-menu-timezone") }
-      else root.togglePanel()
-    }
+    // Clock format and time zone live in the panel's ⋮ menu.
+    onPressed: function(b) { if (b !== Qt.MiddleButton) root.togglePanel() }
 
     Text {
       id: boldLabel
