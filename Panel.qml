@@ -649,9 +649,8 @@ Panel {
           // ---- Hero: today, centered. Once the view has stepped back
           //      it is also the way home — clicking the date you are
           //      looking for beats hunting for a reset button.
-          // Only the date sets the height: the button column at the right
-          // hangs down past it, beside the year bar and the grid, rather
-          // than pushing the calendar down.
+          // Only the date sets the height; the small button row at the right
+          // sits on its centre line.
           Item {
             width: parent.width
             height: heroRow.height
@@ -713,19 +712,17 @@ Panel {
               }
             }
 
-            // Expand, sync and calendars: one above the other, at the right.
-            Column {
+            // Expand, sync and calendars: one quiet row at the right.
+            Row {
               id: heroButtons
               anchors.right: parent.right
-              anchors.top: parent.top
-              spacing: Style.space(2)
+              anchors.verticalCenter: parent.verticalCenter
 
               PanelActionButton {
                 iconText: "󰊓"
                 tooltipText: root.tr("Expand: week, month and year views, and your calendars")
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
-                fontSize: Style.font.display
                 onClicked: root.setLayout(true)
               }
 
@@ -734,7 +731,6 @@ Panel {
                 tooltipText: root.tr(syncProc.running ? "Syncing…" : "Sync now")
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
-                fontSize: Style.font.display
                 onClicked: root.syncNow()
               }
 
@@ -743,7 +739,6 @@ Panel {
                 tooltipText: root.tr("Pick which calendars to show")
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
-                fontSize: Style.font.display
                 onClicked: root.chooseCalendars()
               }
             }
