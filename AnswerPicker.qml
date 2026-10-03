@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import QtQuick.Controls as QC
 import qs.Commons
 import qs.Ui
@@ -43,9 +44,12 @@ Item {
   QC.Popup {
     id: popup
     padding: Style.space(4)
-    // Above the button; below it when the panel has no room above.
-    y: picker.mapToItem(null, 0, 0).y < height + Style.space(4)
-       ? picker.height + Style.space(4) : -height - Style.space(4)
+    // Above the button; below it when the panel has no room above; kept inside the window's right edge.
+    onAboutToShow: {
+      const p = picker.mapToItem(null, 0, 0)
+      y = p.y < height + Style.space(4) ? picker.height + Style.space(4) : -height - Style.space(4)
+      x = Math.min(0, picker.Window.width - p.x - width)
+    }
     focus: true
     closePolicy: QC.Popup.CloseOnEscape | QC.Popup.CloseOnPressOutsideParent   // the button toggles itself
     onClosed: picker.open = false
@@ -70,6 +74,7 @@ Item {
         Button {
           required property var modelData
           readonly property bool current: !!picker.event && picker.event.response === modelData.response
+          enabled: !picker.busy
           iconText: current ? "󰄵" : modelData.icon
           text: modelData.label
           tooltipText: current ? picker.tr("Your answer now")
