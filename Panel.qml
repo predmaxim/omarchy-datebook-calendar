@@ -442,6 +442,7 @@ Panel {
 
   function close() {
     heroMenu.visible = false
+    root.settingsOpen = false
     setCenterHoverRevealSuppressed(false)
     // Dismissing the panel mid-edit would otherwise leave the inputs up,
     // waiting behind a closed popup for the next time it opens.
@@ -564,6 +565,38 @@ Panel {
     cancelEditingLife()
   }
 
+  // ---- Settings view (⋮ → Settings, or IPC `settings`): clock format,
+  //      time zone, first day of the week.
+  property bool settingsOpen: false
+  property Item formatDropdown: null
+  property int settingsCursor: -1
+  property string timeZone: ""
+  readonly property var formatOptions: {
+    var w = root.hostWidget
+    if (!w) return []
+    var now = root.today
+    return w.formatRing.map(function(f) { return { value: f, label: w.formatted(now, f).replace(/\n/g, " ") } })
+  }
+  function openSettings() {
+    heroMenu.visible = false
+    settingsCursor = 0
+    settingsOpen = true
+    zoneProc.running = true
+  }
+  function moveSetting(dy) {
+    settingsCursor = settingsCursor < 0 ? 0 : Math.max(0, Math.min(2, settingsCursor + dy))
+  }
+  function activateSetting(i) {
+    if (i === 0) root.formatDropdown.open()
+    else if (i === 1) { root.close(); if (root.bar) root.bar.run("omarchy-menu-timezone") }
+    else if (i === 2) root.toggleWeekStart()
+  }
+  Process {
+    id: zoneProc
+    command: ["timedatectl", "show", "-p", "Timezone", "--value"]
+    stdout: StdioCollector { onStreamFinished: root.timeZone = this.text.trim() }
+  }
+
   function toggleWeekStart() {
     setWeekStart(Model.toggledWeekStart(root.weekStart))
   }
@@ -603,18 +636,21 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      blocked: root.editingLife || root.cardOpen
+      blocked: root.editingLife || root.cardOpen || (root.formatDropdown !== null && root.formatDropdown.popupOpen)
       onMoveRequested: function(dx, dy) {
         if (heroMenu.visible) { if (dy !== 0) heroMenu.move(dy); return }
+        if (root.settingsOpen) { if (dy !== 0) root.moveSetting(dy); return }
         if (dx !== 0) root.step(dx)
         if (dy !== 0 && (root.viewMode === "month" || !root.modern)) root.moveYear(dy)
       }
-      onActivateRequested: heroMenu.visible ? heroMenu.activate() : root.goToToday()
-      onCloseRequested: heroMenu.visible ? heroMenu.visible = false : root.close()
+      onActivateRequested: heroMenu.visible ? heroMenu.activate()
+        : root.settingsOpen ? root.activateSetting(root.settingsCursor) : root.goToToday()
+      onCloseRequested: heroMenu.visible ? heroMenu.visible = false
+        : root.settingsOpen ? root.settingsOpen = false : root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
       onTextKey: function(t) {
-        if (t === "m" || t === "M") { if (!root.modern) heroMenu.toggle(); return }
-        if (heroMenu.visible) return
+        if (t === "m" || t === "M") { if (!root.modern && !root.settingsOpen) heroMenu.toggle(); return }
+        if (heroMenu.visible || root.settingsOpen) return
         if (t >= "1" && t <= "5") { root.setView(Model.VIEWS[Number(t) - 1]); root.setLayout(true) }
         else if (t === "[") root.step(-1)
         else if (t === "]") root.step(1)
@@ -627,7 +663,7 @@ Panel {
       ModernLayout {
         tr: root.tr
         labelLocale: root.labelLocale
-        visible: root.modern
+        visible: root.modern && !root.settingsOpen
         anchors.fill: parent
         p: root
       }
@@ -663,7 +699,7 @@ Panel {
         // Keyboard: m opens, ↑/↓ walk, Enter runs, Esc closes the menu only.
         // Mouse hover drives the same cursor, so one highlight at a time.
         property int cursor: -1
-        readonly property var items: [menuExpand, menuSync, menuCalendars, menuFormat, menuZone].filter(function(b) { return b.visible })
+        readonly property var items: [menuExpand, menuSync, menuCalendars, menuSettings].filter(function(b) { return b.visible })
         function move(dy) {
           var n = items.length
           cursor = cursor < 0 ? (dy > 0 ? 0 : n - 1) : Math.max(0, Math.min(n - 1, cursor + dy))
@@ -678,7 +714,7 @@ Panel {
           id: heroMenuColumn
           anchors.centerIn: parent
           width: Math.max(menuExpand.implicitWidth, menuSync.implicitWidth, menuCalendars.implicitWidth,
-                           menuFormat.implicitWidth, menuZone.implicitWidth)
+                           menuSettings.implicitWidth)
           spacing: Style.spacing.xs
 
           Button {
@@ -721,38 +757,97 @@ Panel {
           }
 
           Button {
-            id: menuFormat
-            hasCursor: heroMenu.hot(menuFormat)
-            onHovered: function(h) { heroMenu.hover(menuFormat, h) }
+            id: menuSettings
+            hasCursor: heroMenu.hot(menuSettings)
+            onHovered: function(h) { heroMenu.hover(menuSettings, h) }
             width: parent.width
-            visible: !!root.hostWidget
             leftAlign: true
-            iconText: "󰥔"
-            text: root.tr("Clock format")
+            iconText: "󰒓"
+            text: root.tr("Settings")
             foreground: root.contentForeground
             fontFamily: root.contentFontFamily
-            onClicked: heroMenu.run(function() { root.hostWidget.cycleFormat() })
+            onClicked: heroMenu.run(root.openSettings)
           }
+        }
+      }
 
-          Button {
-            id: menuZone
-            hasCursor: heroMenu.hot(menuZone)
-            onHovered: function(h) { heroMenu.hover(menuZone, h) }
-            width: parent.width
-            visible: !!(root.hostWidget && root.hostWidget.bar)
-            leftAlign: true
-            iconText: "󰥐"
-            text: root.tr("Time zone")
+      Column {
+        id: settingsView
+        visible: root.settingsOpen
+        anchors.left: parent.left
+        anchors.right: parent.right
+        spacing: Style.spacing.xs
+
+        PanelSectionHeader {
+          text: root.tr("Settings")
+          foreground: root.contentForeground
+          fontFamily: root.contentFontFamily
+        }
+
+        Repeater {
+          model: [root.tr("Clock format"), root.tr("Time zone"), root.tr("First day of week")]
+
+          CursorSurface {
+            id: settingRow
+            required property string modelData
+            required property int index
+            width: settingsView.width
+            height: Style.spacing.controlHeight + Style.spacing.xs * 2
+            hasCursor: root.settingsCursor === index
             foreground: root.contentForeground
-            fontFamily: root.contentFontFamily
-            onClicked: heroMenu.run(function() { root.close(); root.hostWidget.bar.run("omarchy-menu-timezone") })
+
+            MouseArea {
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onPositionChanged: root.settingsCursor = settingRow.index
+              onClicked: root.activateSetting(settingRow.index)
+            }
+
+            Text {
+              anchors.left: parent.left
+              anchors.leftMargin: Style.spacing.controlPaddingX
+              anchors.verticalCenter: parent.verticalCenter
+              text: settingRow.modelData
+              color: root.contentForeground
+              font.family: root.contentFontFamily
+              font.pixelSize: Style.font.body
+            }
+
+            Dropdown {
+              id: rowDropdown
+              visible: settingRow.index === 0
+              anchors.right: parent.right
+              anchors.rightMargin: Style.spacing.xs
+              anchors.verticalCenter: parent.verticalCenter
+              showLabel: false
+              hasCursor: settingRow.hasCursor
+              options: root.formatOptions
+              value: root.hostWidget ? String(root.hostWidget.configuredFormat) : ""
+              fontFamily: root.contentFontFamily
+              onChanged: function(v) { root.hostWidget.setFormat(v) }
+              onHovered: function(h) { if (h) root.settingsCursor = 0 }
+              onPopupOpenChanged: if (!popupOpen) keyCatcher.forceActiveFocus()
+              Component.onCompleted: if (settingRow.index === 0) root.formatDropdown = rowDropdown
+            }
+
+            Text {
+              visible: settingRow.index > 0
+              anchors.right: parent.right
+              anchors.rightMargin: Style.spacing.controlPaddingX
+              anchors.verticalCenter: parent.verticalCenter
+              text: settingRow.index === 1 ? root.timeZone : root.labelLocale.dayName(root.weekStart, Locale.LongFormat)
+              color: root.contentForeground
+              font.family: root.contentFontFamily
+              font.pixelSize: Style.font.body
+            }
           }
         }
       }
 
       Flickable {
         id: calendarScroll
-        visible: !root.modern
+        visible: !root.modern && !root.settingsOpen
         anchors.fill: parent
         contentWidth: calendarColumn.width
         contentHeight: calendarColumn.implicitHeight

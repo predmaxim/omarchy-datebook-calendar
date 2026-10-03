@@ -39,10 +39,10 @@ BarWidget {
     if (panelLoader.item && panelLoader.item.refresh) panelLoader.item.refresh()
   }
 
-  function cycleFormat() {
-    var current = String(configuredFormat)
-    var next = Model.nextClockFormat(formatRing, current)
-    if (next === "" || next === current) return
+  function cycleFormat() { setFormat(Model.nextClockFormat(formatRing, String(configuredFormat))) }
+
+  function setFormat(next) {
+    if (next === "" || next === String(configuredFormat)) return
 
     var entry = { id: root.moduleName }
     for (var key in root.settings) if (key !== "id") entry[key] = root.settings[key]
@@ -56,10 +56,10 @@ BarWidget {
   }
 
   // Day and month names in the interface language (see Model.namedFormat).
-  function formatted(date) {
+  function formatted(date, fmt) {
     var loc = root.labelLocale
     var format = Model.namedFormat(
-      activeFormat.replace(/ww/g, Model.isoWeekLiteral(date.getFullYear(), date.getMonth(), date.getDate())),
+      (fmt === undefined ? activeFormat : fmt).replace(/ww/g, Model.isoWeekLiteral(date.getFullYear(), date.getMonth(), date.getDate())),
       loc.dayName(date.getDay(), Locale.LongFormat), loc.dayName(date.getDay(), Locale.ShortFormat),
       loc.monthName(date.getMonth(), Locale.ShortFormat))
     var text = date.toLocaleString(loc, format)
@@ -154,6 +154,10 @@ BarWidget {
     function show(): void { root.open() }
     function hide(): void { root.close() }
     function toggle(): void { root.togglePanel() }
+    function settings(): void {
+      root.open()
+      if (panelLoader.item) panelLoader.item.openSettings()
+    }
     function view(name: string): void { root.showView(name) }
     function showEvent(uid: string): void {
       if (!panelLoader.item) return
