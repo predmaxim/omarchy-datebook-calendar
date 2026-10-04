@@ -848,41 +848,53 @@ Panel {
           width: Math.max(calendarScroll.width, gridColumn.width)
           spacing: Style.space(8)
 
-          // ---- Hero: the stock PanelHero like every panel — today at the
-          //      left, expand/sync/settings at the right. Once the view has
-          //      stepped back, the date is also the way home.
-          PanelHero {
+          // ---- Hero: today at the left, large like the counters in other
+          //      panel headers (no icon), expand/sync/settings at the right.
+          //      Once the view has stepped back, the date is also the way home.
+          Item {
             id: hero
             width: parent.width
-            title: root.hostWidget && root.hostWidget.displayText
-              ? root.hostWidget.displayText.replace(/\n/g, " ")
-              : root.today.toLocaleDateString(root.labelLocale, root.labelLocale.name === "en_US" ? "MMMM d" : "d MMMM")
-            meta: root.viewingCurrentMonth ? "" : root.tr("Back to today")
-            foreground: heroMouse.containsMouse
+            height: Math.max(heroDate.implicitHeight, heroButtons.implicitHeight)
+            readonly property color tint: heroMouse.containsMouse
               ? Style.hoverStateColor(root.contentForeground, Color.accent)
               : root.contentForeground
-            fontFamily: root.contentFontFamily
-            iconComponent: Text {
-              text: "󰃭"
-              color: hero.foreground
+
+            Text {
+              id: heroDate
+              anchors.left: parent.left
+              anchors.right: heroButtons.left
+              anchors.rightMargin: Style.space(12)
+              anchors.verticalCenter: parent.verticalCenter
+              // The bar's own label, time in bold as on the bar.
+              textFormat: Text.StyledText
+              elide: Text.ElideRight
+              text: root.hostWidget && root.hostWidget.displayText
+                ? Model.boldTime(root.hostWidget.displayText)
+                : root.today.toLocaleDateString(root.labelLocale, root.labelLocale.name === "en_US" ? "MMMM d" : "d MMMM")
+              color: hero.tint
               font.family: root.contentFontFamily
-              font.pixelSize: Style.font.display
+              font.pixelSize: Style.font.displayLarge
             }
 
             MouseArea {
               id: heroMouse
-              anchors.left: parent.left
-              anchors.top: parent.top
-              anchors.bottom: parent.bottom
-              anchors.right: parent.right
-              anchors.rightMargin: hero.trailingInset
+              anchors.fill: heroDate
               enabled: !root.viewingCurrentMonth
               hoverEnabled: enabled
               cursorShape: Qt.PointingHandCursor
               onClicked: root.goToToday()
+
+              PanelToolTip {
+                visible: heroMouse.containsMouse
+                text: root.tr("Back to today")
+                fontFamily: root.contentFontFamily
+              }
             }
 
-            trailingControl: Row {
+            Row {
+              id: heroButtons
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
               spacing: Style.space(6)
 
               Button {
