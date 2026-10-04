@@ -136,7 +136,7 @@ eq(["organizer", "accepted", "tentative", "declined", "needsAction", "none"].map
    ["You organise it", "You accepted", "You said maybe", "You declined", "Not answered yet", ""], "responseText")
 
 // Bar label names: capitalised days, month abbreviations without their dot.
-eq(M.namedFormat("d MMM, ddd HH:mm", "понедельник", "пн", "сент."), "d 'сент', 'Пн' HH:mm", "namedFormat: ru short")
+eq(M.namedFormat("d MMM, ddd HH:mm", "понедельник", "пн", "сент."), "d 'Сент', 'Пн' HH:mm", "namedFormat: ru short")
 eq(M.namedFormat("dddd HH:mm", "понедельник", "пн", "сент."), "'Понедельник' HH:mm", "namedFormat: ru long day")
 eq(M.namedFormat("d MMMM 'W'ww yyyy", "Monday", "Mon", "Sep"), "d MMMM 'W'ww yyyy", "namedFormat: long month left to the locale")
 eq(M.namedFormat("ddd d MMM", "Monday", "Mon", "Sep"), "'Mon' d 'Sep'", "namedFormat: English unchanged in effect")
