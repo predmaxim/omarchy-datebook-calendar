@@ -622,7 +622,7 @@ Panel {
     // The app layout takes what the screen allows, up to a comfortable size;
     // the stock one is sized by its content.
     contentWidth: root.modern ? panel.fittedContentWidth(Style.space(1240))
-                : panel.fittedContentWidth(Style.space(560))
+                : panel.fittedContentWidth(gridColumn.width + panel.padding * 2 + Border.left(panel.borderSpec) + Border.right(panel.borderSpec))
     contentHeight: root.modern ? panel.fittedContentHeight(Style.space(780))
                  : panel.fittedContentHeight(calendarColumn.implicitHeight)
 
@@ -848,79 +848,41 @@ Panel {
           width: Math.max(calendarScroll.width, gridColumn.width)
           spacing: Style.space(8)
 
-          // ---- Hero: today, at the left like every panel header (the
-          //      buttons at the right). Once the view has stepped back
-          //      it is also the way home — clicking the date you are
-          //      looking for beats hunting for a reset button.
-          // Only the date sets the height: the button column at the right
-          // hangs down past it, beside the year bar and the grid, rather
-          // than pushing the calendar down.
-          Item {
+          // ---- Hero: the stock PanelHero like every panel — today at the
+          //      left, expand/sync/settings at the right. Once the view has
+          //      stepped back, the date is also the way home.
+          PanelHero {
+            id: hero
             width: parent.width
-            height: heroRow.height
-
-            Row {
-              id: heroRow
-              anchors.left: parent.left
-              spacing: Style.space(22)
-
-              Text {
-                // Baseline-aligned, not center-aligned: "July 26" carries a
-                // descender, so centering the two boxes leaves the icon
-                // sitting visibly low against the digits.
-                anchors.baseline: heroDate.baseline
-                text: "󰃭"
-                color: heroMouse.containsMouse
-                  ? Style.hoverStateColor(root.contentForeground, Color.accent)
-                  : root.contentForeground
-                font.family: root.contentFontFamily
-                // Decorative, scaled off Style.font.displayLarge (48 at
-                // this theme's 37). Sized so the glyph reads at the cap height of the
-                // date beside it rather than towering over it.
-                font.pixelSize: Math.round(Style.font.displayLarge * 1.3)
-              }
-
-              Text {
-                id: heroDate
-                // The bar's own label ("29 сент, Вт, 11:49", its format
-                // setting), time in bold as on the bar; the widget keeps it
-                // current to the minute. Just the date if the panel runs bare.
-                textFormat: Text.StyledText
-                anchors.verticalCenter: parent.verticalCenter
-                text: root.hostWidget && root.hostWidget.displayText
-                  ? Model.boldTime(root.hostWidget.displayText)
-                  : root.today.toLocaleDateString(root.labelLocale, root.labelLocale.name === "en_US" ? "MMMM d" : "d MMMM")
-                color: heroMouse.containsMouse
-                  ? Style.hoverStateColor(root.contentForeground, Color.accent)
-                  : root.contentForeground
-                font.family: root.contentFontFamily
-                font.pixelSize: Math.round(Style.font.displayLarge * 1.03)
-              }
+            title: root.hostWidget && root.hostWidget.displayText
+              ? root.hostWidget.displayText.replace(/\n/g, " ")
+              : root.today.toLocaleDateString(root.labelLocale, root.labelLocale.name === "en_US" ? "MMMM d" : "d MMMM")
+            meta: root.viewingCurrentMonth ? "" : root.tr("Back to today")
+            foreground: heroMouse.containsMouse
+              ? Style.hoverStateColor(root.contentForeground, Color.accent)
+              : root.contentForeground
+            fontFamily: root.contentFontFamily
+            iconComponent: Text {
+              text: "󰃭"
+              color: hero.foreground
+              font.family: root.contentFontFamily
+              font.pixelSize: Style.font.display
             }
 
             MouseArea {
               id: heroMouse
-              x: heroRow.x
-              y: heroRow.y
-              width: heroRow.width
-              height: heroRow.height
+              anchors.left: parent.left
+              anchors.top: parent.top
+              anchors.bottom: parent.bottom
+              anchors.right: parent.right
+              anchors.rightMargin: hero.trailingInset
               enabled: !root.viewingCurrentMonth
               hoverEnabled: enabled
               cursorShape: Qt.PointingHandCursor
               onClicked: root.goToToday()
-
-              PanelToolTip {
-                visible: heroMouse.containsMouse
-                text: root.tr("Back to today")
-                fontFamily: root.contentFontFamily
-              }
             }
 
-            // Expand, sync and settings (the common header, dotfiles rules.md):
-            // square borderless icons at the right.
-            Row {
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
+            trailingControl: Row {
               spacing: Style.space(6)
 
               Button {
