@@ -848,7 +848,8 @@ Panel {
           width: Math.max(calendarScroll.width, gridColumn.width)
           spacing: Style.space(8)
 
-          // ---- Hero: today, centered. Once the view has stepped back
+          // ---- Hero: today, at the left like every panel header (the
+          //      buttons at the right). Once the view has stepped back
           //      it is also the way home — clicking the date you are
           //      looking for beats hunting for a reset button.
           // Only the date sets the height: the button column at the right
@@ -860,7 +861,7 @@ Panel {
 
             Row {
               id: heroRow
-              anchors.horizontalCenter: parent.horizontalCenter
+              anchors.left: parent.left
               spacing: Style.space(22)
 
               Text {
