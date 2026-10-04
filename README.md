@@ -69,11 +69,11 @@ Russian dates.
 | `[` `]`, arrows | previous / next |
 | `t` | today |
 | `w` | first day of the week |
-| `m` | ⋮ menu (↑/↓, Enter, Esc closes the menu); its Settings view: ↑/↓ rows, Enter opens/runs, Esc back to the calendar |
+| `s` | Settings (also the gear in the header): ↑/↓ rows, Enter opens/runs/toggles, Esc back to the calendar. The rows: clock format, time zone, first day of week, then a switch per calendar |
 | Esc, Enter | close the event card |
 
 Sync runs every 3 minutes and when you open the calendar; `calendar-ctl sync`
-runs it by hand. `calendar-ctl choose` picks calendars from the terminal;
+runs it by hand. Calendars are switched on and off in Settings (or `calendar-ctl choose` in a terminal);
 hidden calendars aren't downloaded.
 
 Optional settings in the widget's entry in `shell.json`: `"format"` (the date

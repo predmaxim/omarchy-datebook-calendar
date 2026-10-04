@@ -101,24 +101,48 @@ Item {
         onChanged: function(v) { layout.p.setView(v) }
       }
 
-      PanelActionButton {
+      // Sync, compact and settings: the common header (dotfiles rules.md).
+      Button {
         anchors.verticalCenter: parent.verticalCenter
-        iconText: layout.p && layout.p.syncing ? "󰑓" : "󰑐"
+        iconText: "󰑐"
+        iconSize: Style.font.subtitle * 1.5
+        horizontalPadding: Style.space(5)
+        verticalPadding: Style.space(2)
+        width: Math.max(implicitWidth, implicitHeight)   // square, like an icon button
+        height: width
         tooltipText: layout.tr(layout.p && layout.p.syncing ? "Syncing…" : "Sync now")
         foreground: layout.fg
         fontFamily: layout.fontName
-        fontSize: Style.font.display
+        iconSpinning: !!(layout.p && layout.p.syncing)
         onClicked: layout.p.syncNow()
       }
 
-      PanelActionButton {
+      Button {
         anchors.verticalCenter: parent.verticalCenter
         iconText: "󰊔"
+        iconSize: Style.font.subtitle * 1.5
+        horizontalPadding: Style.space(5)
+        verticalPadding: Style.space(2)
+        width: Math.max(implicitWidth, implicitHeight)   // square, like an icon button
+        height: width
         tooltipText: layout.tr("Compact: Omarchy's month and the day's appointments")
         foreground: layout.fg
         fontFamily: layout.fontName
-        fontSize: Style.font.display
         onClicked: layout.p.setLayout(false)
+      }
+
+      Button {
+        anchors.verticalCenter: parent.verticalCenter
+        iconText: "󰒓"
+        iconSize: Style.font.subtitle * 1.5
+        horizontalPadding: Style.space(5)
+        verticalPadding: Style.space(2)
+        width: Math.max(implicitWidth, implicitHeight)   // square, like an icon button
+        height: width
+        tooltipText: layout.tr("Settings") + " (S)"
+        foreground: layout.fg
+        fontFamily: layout.fontName
+        onClicked: layout.p.openSettings()
       }
     }
   }

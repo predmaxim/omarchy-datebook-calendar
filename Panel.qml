@@ -272,13 +272,6 @@ Panel {
 
   Process { id: failProc }
 
-  function chooseCalendars() {
-    termProc.command = ["omarchy-launch-floating-terminal-with-presentation",
-                        root.pluginDir + "/scripts/calendar-ctl choose"]
-    termProc.running = true
-    root.close()
-  }
-
   function selectDay(cell) {
     root.selectedKey = cell.key
     // Clicking a leading or trailing day from a neighbouring month goes there.
@@ -414,7 +407,6 @@ Panel {
     }
   }
 
-  Process { id: termProc }
 
   // Every three minutes, whether or not the panel is open: reminders and the
   // bar need fresh data too, and a pass that finds nothing new costs a few
@@ -441,7 +433,6 @@ Panel {
   }
 
   function close() {
-    heroMenu.visible = false
     root.settingsOpen = false
     setCenterHoverRevealSuppressed(false)
     // Dismissing the panel mid-edit would otherwise leave the inputs up,
@@ -565,8 +556,9 @@ Panel {
     cancelEditingLife()
   }
 
-  // ---- Settings view (⋮ → Settings, or IPC `settings`): clock format,
-  //      time zone, first day of the week.
+  // ---- Settings view (the header's gear, S, or IPC `settings`): clock
+  //      format, time zone, first day of the week, then the calendars —
+  //      one switch each, by account.
   property bool settingsOpen: false
   property Item formatDropdown: null
   property int settingsCursor: -1
@@ -578,18 +570,19 @@ Panel {
     return w.formatRing.map(function(f) { return { value: f, label: w.formatted(now, f).replace(/\n/g, " ") } })
   }
   function openSettings() {
-    heroMenu.visible = false
     settingsCursor = 0
     settingsOpen = true
     zoneProc.running = true
   }
+  readonly property var calendarRows: root.eventIndex ? (root.eventIndex.calendarList || []) : []
   function moveSetting(dy) {
-    settingsCursor = settingsCursor < 0 ? 0 : Math.max(0, Math.min(2, settingsCursor + dy))
+    settingsCursor = settingsCursor < 0 ? 0 : Math.max(0, Math.min(2 + root.calendarRows.length, settingsCursor + dy))
   }
   function activateSetting(i) {
     if (i === 0) { if (root.formatDropdown) root.formatDropdown.open() }
     else if (i === 1) { root.close(); if (root.bar) root.bar.run("omarchy-menu-timezone") }
     else if (i === 2) root.toggleWeekStart()
+    else if (root.calendarRows[i - 3]) root.toggleCalendar(root.calendarRows[i - 3])
   }
   Process {
     id: zoneProc
@@ -638,19 +631,16 @@ Panel {
       anchors.fill: parent
       blocked: root.editingLife || root.cardOpen || (root.formatDropdown !== null && root.formatDropdown.popupOpen)
       onMoveRequested: function(dx, dy) {
-        if (heroMenu.visible) { if (dy !== 0) heroMenu.move(dy); return }
         if (root.settingsOpen) { if (dy !== 0) root.moveSetting(dy); return }
         if (dx !== 0) root.step(dx)
         if (dy !== 0 && (root.viewMode === "month" || !root.modern)) root.moveYear(dy)
       }
-      onActivateRequested: heroMenu.visible ? heroMenu.activate()
-        : root.settingsOpen ? root.activateSetting(root.settingsCursor) : root.goToToday()
-      onCloseRequested: heroMenu.visible ? heroMenu.visible = false
-        : root.settingsOpen ? root.settingsOpen = false : root.close()
-      onTabRequested: function(direction) { if (!heroMenu.visible) root.switchPanel(direction) }
+      onActivateRequested: root.settingsOpen ? root.activateSetting(root.settingsCursor) : root.goToToday()
+      onCloseRequested: root.settingsOpen ? root.settingsOpen = false : root.close()
+      onTabRequested: function(direction) { root.switchPanel(direction) }
       onTextKey: function(t) {
-        if (t === "m" || t === "M") { if (!root.modern && !root.settingsOpen) heroMenu.toggle(); return }
-        if (heroMenu.visible || root.settingsOpen) return
+        if (root.settingsOpen) return
+        if (t === "s" || t === "S") { root.openSettings(); return }
         if (t >= "1" && t <= "5") { root.setView(Model.VIEWS[Number(t) - 1]); root.setLayout(true) }
         else if (t === "[") root.step(-1)
         else if (t === "]") root.step(1)
@@ -668,109 +658,6 @@ Panel {
         p: root
       }
 
-      // Click anywhere off the menu closes it.
-      MouseArea {
-        anchors.fill: parent
-        visible: heroMenu.visible
-        z: 1
-        onClicked: heroMenu.visible = false
-      }
-
-      Rectangle {
-        id: heroMenu
-        visible: false
-        z: 2
-        width: heroMenuColumn.width + Style.spacing.xs * 2
-        height: heroMenuColumn.implicitHeight + Style.spacing.xs * 2
-        radius: Style.cornerRadius
-        color: Color.popups.background
-        border.color: Color.popups.border
-        border.width: Math.max(1, Style.space(2))
-
-        // Placed on opening: the button only has its final spot once laid out.
-        function toggle() {
-          var at = heroMenuButton.mapToItem(keyCatcher, heroMenuButton.width, heroMenuButton.height)
-          x = at.x - width
-          y = at.y + Style.space(4)
-          cursor = -1
-          visible = !visible
-        }
-
-        // Keyboard: m opens, ↑/↓ walk, Enter runs, Esc closes the menu only.
-        // Mouse hover drives the same cursor, so one highlight at a time.
-        property int cursor: -1
-        readonly property var items: [menuExpand, menuSync, menuCalendars, menuSettings].filter(function(b) { return b.visible })
-        function move(dy) {
-          var n = items.length
-          cursor = cursor < 0 ? (dy > 0 ? 0 : n - 1) : Math.max(0, Math.min(n - 1, cursor + dy))
-        }
-        function activate() { if (cursor >= 0 && cursor < items.length) items[cursor].clicked() }
-        function hot(b) { return visible && items[cursor] === b }
-        function hover(b, h) { if (h) cursor = items.indexOf(b) }
-
-        function run(action) { visible = false; action() }
-
-        Column {
-          id: heroMenuColumn
-          anchors.centerIn: parent
-          width: Math.max(menuExpand.implicitWidth, menuSync.implicitWidth, menuCalendars.implicitWidth,
-                           menuSettings.implicitWidth)
-          spacing: Style.spacing.xs
-
-          Button {
-            id: menuExpand
-            hasCursor: heroMenu.hot(menuExpand)
-            onHovered: function(h) { heroMenu.hover(menuExpand, h) }
-            width: parent.width
-            leftAlign: true
-            iconText: "󰊓"
-            text: root.tr("Expand")
-            foreground: root.contentForeground
-            fontFamily: root.contentFontFamily
-            onClicked: heroMenu.run(function() { root.setLayout(true) })
-          }
-
-          Button {
-            id: menuSync
-            hasCursor: heroMenu.hot(menuSync)
-            onHovered: function(h) { heroMenu.hover(menuSync, h) }
-            width: parent.width
-            leftAlign: true
-            iconText: syncProc.running ? "󰑓" : "󰑐"
-            text: root.tr(syncProc.running ? "Syncing…" : "Sync now")
-            foreground: root.contentForeground
-            fontFamily: root.contentFontFamily
-            onClicked: heroMenu.run(root.syncNow)
-          }
-
-          Button {
-            id: menuCalendars
-            hasCursor: heroMenu.hot(menuCalendars)
-            onHovered: function(h) { heroMenu.hover(menuCalendars, h) }
-            width: parent.width
-            leftAlign: true
-            iconText: "󰃭"
-            text: root.tr("Calendars")
-            foreground: root.contentForeground
-            fontFamily: root.contentFontFamily
-            onClicked: heroMenu.run(root.chooseCalendars)
-          }
-
-          Button {
-            id: menuSettings
-            hasCursor: heroMenu.hot(menuSettings)
-            onHovered: function(h) { heroMenu.hover(menuSettings, h) }
-            width: parent.width
-            leftAlign: true
-            iconText: "󰒓"
-            text: root.tr("Settings")
-            foreground: root.contentForeground
-            fontFamily: root.contentFontFamily
-            onClicked: heroMenu.run(root.openSettings)
-          }
-        }
-      }
-
       Column {
         id: settingsView
         visible: root.settingsOpen
@@ -778,24 +665,33 @@ Panel {
         anchors.right: parent.right
         spacing: Style.spacing.xs
 
-        // Back for the mouse; Esc does the same from the keyboard.
-        Row {
-          spacing: Style.spacing.xs
-
-          Button {
-            anchors.verticalCenter: parent.verticalCenter
-            iconText: "󰁍"
-            tooltipText: root.tr("Back")
-            foreground: root.contentForeground
-            fontFamily: root.contentFontFamily
-            onClicked: root.settingsOpen = false
-          }
+        // Title, and Back at the right like every header (Esc does the same).
+        Item {
+          width: parent.width
+          height: settingsBack.height
 
           PanelSectionHeader {
+            anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: root.tr("Settings")
             foreground: root.contentForeground
             fontFamily: root.contentFontFamily
+          }
+
+          Button {
+            id: settingsBack
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            iconText: "󰁍"
+            iconSize: Style.font.subtitle * 1.5
+            horizontalPadding: Style.space(5)
+            verticalPadding: Style.space(2)
+            width: Math.max(implicitWidth, implicitHeight)   // square, like an icon button
+            height: width
+            tooltipText: root.tr("Back")
+            foreground: root.contentForeground
+            fontFamily: root.contentFontFamily
+            onClicked: root.settingsOpen = false
           }
         }
 
@@ -855,6 +751,80 @@ Panel {
               color: root.contentForeground
               font.family: root.contentFontFamily
               font.pixelSize: Style.font.body
+            }
+          }
+        }
+
+        // Calendars: shown or hidden, one switch each (was a terminal picker).
+        Repeater {
+          model: root.calendarRows
+
+          Column {
+            id: calRow
+            required property var modelData
+            required property int index
+            readonly property bool firstOfAccount: index === 0 || root.calendarRows[index - 1].account !== modelData.account
+            readonly property bool pending: root.writingUid === "cal:" + modelData.ref
+            width: settingsView.width
+
+            PanelSectionHeader {
+              visible: calRow.firstOfAccount
+              topPadding: Style.space(8)
+              text: (calRow.index === 0 ? root.tr("Calendars") + " · " : "") + calRow.modelData.account
+              foreground: root.contentForeground
+              fontFamily: root.contentFontFamily
+            }
+
+            CursorSurface {
+              id: calSurface
+              width: parent.width
+              height: Style.spacing.controlHeight + Style.spacing.xs * 2
+              hasCursor: root.settingsCursor === 3 + calRow.index
+              foreground: root.contentForeground
+
+              MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onPositionChanged: root.settingsCursor = 3 + calRow.index
+                onClicked: root.activateSetting(3 + calRow.index)
+              }
+
+              Rectangle {
+                id: calSwatch
+                anchors.left: parent.left
+                anchors.leftMargin: Style.spacing.controlPaddingX
+                anchors.verticalCenter: parent.verticalCenter
+                width: Style.space(12)
+                height: width
+                radius: Math.min(Style.cornerRadius, Style.space(3))
+                color: calRow.modelData.color
+              }
+
+              Text {
+                anchors.left: calSwatch.right
+                anchors.leftMargin: Style.space(8)
+                anchors.right: calSwitch.left
+                anchors.rightMargin: Style.space(8)
+                anchors.verticalCenter: parent.verticalCenter
+                elide: Text.ElideRight
+                textFormat: Text.PlainText
+                text: calRow.pending ? calRow.modelData.name + "  …" : calRow.modelData.name
+                color: root.contentForeground
+                font.family: root.contentFontFamily
+                font.pixelSize: Style.font.body
+              }
+
+              ToggleSwitch {
+                id: calSwitch
+                anchors.right: parent.right
+                anchors.rightMargin: Style.spacing.xs
+                anchors.verticalCenter: parent.verticalCenter
+                checked: !!calRow.modelData.shown
+                cursorRing: false
+                foreground: root.contentForeground
+                onToggled: root.toggleCalendar(calRow.modelData)
+              }
             }
           }
         }
@@ -945,17 +915,55 @@ Panel {
               }
             }
 
-            // Expand, sync and calendars live in one "⋯" menu at the right.
-            PanelActionButton {
-              id: heroMenuButton
+            // Expand, sync and settings (the common header, dotfiles rules.md):
+            // square borderless icons at the right.
+            Row {
               anchors.right: parent.right
               anchors.verticalCenter: parent.verticalCenter
-              iconText: "󰇙"
-              fontSize: Style.font.display
-              tooltipText: heroMenu.visible ? "" : root.tr("More") + " (M)"
-              foreground: root.contentForeground
-              fontFamily: root.contentFontFamily
-              onClicked: heroMenu.toggle()
+              spacing: Style.space(6)
+
+              Button {
+                anchors.verticalCenter: parent.verticalCenter
+                iconText: "󰊓"
+                iconSize: Style.font.subtitle * 1.5
+                horizontalPadding: Style.space(5)
+                verticalPadding: Style.space(2)
+                width: Math.max(implicitWidth, implicitHeight)   // square, like an icon button
+                height: width
+                tooltipText: root.tr("Expand")
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                onClicked: root.setLayout(true)
+              }
+
+              Button {
+                anchors.verticalCenter: parent.verticalCenter
+                iconText: "󰑐"
+                iconSize: Style.font.subtitle * 1.5
+                horizontalPadding: Style.space(5)
+                verticalPadding: Style.space(2)
+                width: Math.max(implicitWidth, implicitHeight)   // square, like an icon button
+                height: width
+                tooltipText: root.tr(syncProc.running ? "Syncing…" : "Sync now")
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                iconSpinning: syncProc.running
+                onClicked: root.syncNow()
+              }
+
+              Button {
+                anchors.verticalCenter: parent.verticalCenter
+                iconText: "󰒓"
+                iconSize: Style.font.subtitle * 1.5
+                horizontalPadding: Style.space(5)
+                verticalPadding: Style.space(2)
+                width: Math.max(implicitWidth, implicitHeight)   // square, like an icon button
+                height: width
+                tooltipText: root.tr("Settings") + " (S)"
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                onClicked: root.openSettings()
+              }
             }
           }
 
