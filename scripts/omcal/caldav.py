@@ -282,11 +282,17 @@ def _end(ve, s):
 
 
 def _join(ve):
-    """Yandex keeps a meeting's Telemost link in its own property; else look in the text."""
+    """The link in the description first: an organizer changes it there, and the web app shows it.
+
+    Yandex also keeps a Telemost link in its own property and LOCATION, which can go stale.
+    """
+    found = find_join(ical.text(ve.get("DESCRIPTION")))
+    if found:
+        return found
     tm = ical.text(ve.get("X-TELEMOST-CONFERENCE")).strip()
     if join_kind(tm) == "telemost":
         return {"url": tm, "kind": "telemost"}
-    return find_join(ical.text(ve.get("URL")), ical.text(ve.get("LOCATION")), ical.text(ve.get("DESCRIPTION")))
+    return find_join(ical.text(ve.get("URL")), ical.text(ve.get("LOCATION")))
 
 
 def _web_link(ve, web):
@@ -344,6 +350,7 @@ def normalise(account, cal, tok, href, etag, ve):
         "title": ical.text(ve.get("SUMMARY")).strip() or "(no title)",
         "allDay": all_day, "start": start, "end": end,
         "location": ical.text(ve.get("LOCATION")),
+        "description": ical.text(ve.get("DESCRIPTION")).strip(),
         "join": _join(ve),
         "response": response,
         "organizer": organizer,

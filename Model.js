@@ -732,7 +732,7 @@ function cardWhen(row, use24h, tr, locale) {
 // Punctuation that ends a sentence stays outside the link.
 function linkify(text) {
   var esc = function (s) {
-    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/\n/g, "<br>")
   }
   var out = "", last = 0, re = /https:\/\/[^\s<>"]+/g, m
   var str = String(text || "")

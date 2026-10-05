@@ -80,7 +80,8 @@ Item {
 
     Line {
       visible: plain !== ""
-      plain: card.event ? String(card.event.location || "") : ""
+      // The description as the web app shows it; LOCATION may hold a stale link.
+      plain: card.event ? String(card.event.description || card.event.location || "") : ""
     }
 
     Line {
