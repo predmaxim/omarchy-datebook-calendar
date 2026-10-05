@@ -102,8 +102,9 @@ by[k] = []; by[M.addDays(k, 3)] = [{ title: "t", start: at(14, 30, 3), end: at(1
 eq(M.nextUp(by, now, true, en, RU).when, "чт · 14:30", "nextUp: weekday from the format locale")
 eq(M.reminderText(back[0], "Работа", true, ru).body.indexOf("отложено · "), 0, "reminderText: ru")
 const allDayIdx = M.indexEvents({ calendars: [{ account: "a", id: "c", shown: true }],
-  events: [{ uid: "a/c/1", account: "a", calendar: "c", title: "T", allDay: true, start: "2026-10-05", end: "2026-10-06", status: "confirmed" }] }, true, ru)
+  events: [{ uid: "a/c/1", account: "a", calendar: "c", title: "T", allDay: true, start: "2026-10-05", end: "2026-10-06", status: "confirmed", description: "D" }] }, true, ru)
 eq([allDayIdx.byDay["2026-10-05"][0].label, allDayIdx.byDay["2026-10-05"][0].allDay], ["Весь день", true], "indexEvents: ru all-day stays all-day")
+eq(allDayIdx.byDay["2026-10-05"][0].description, "D", "indexEvents: description reaches the card")
 eq(M.english("+%1 more", 3), "+3 more", "english: fills args")
 
 // The event card.
