@@ -155,6 +155,14 @@ class Fetch(unittest.TestCase):
         self.assertEqual((ev["recurring"], ev["seriesId"], ev["etag"]), (False, None, '"e1"'))
         self.assertEqual(ev["uid"][len("Y/%s/" % CAL["id"]):], "single.ics")
 
+    def test_description_link_wins_over_a_stale_location(self):
+        # The organizer changed the link in the description only, as the web app shows it.
+        moved = SINGLE.replace("LOCATION:Переговорная 5", "LOCATION:https://telemost.yandex.ru/j/111\n"
+                               "DESCRIPTION:Ссылка на телемост: https://telemost.360.yandex.ru/j/222\\nДоска")
+        ev = self.read(("/c/single.ics", '"e1"', moved))[0]["Планёрка"]
+        self.assertEqual(ev["join"], {"url": "https://telemost.360.yandex.ru/j/222", "kind": "telemost"})
+        self.assertEqual(ev["description"], "Ссылка на телемост: https://telemost.360.yandex.ru/j/222\nДоска")
+
     def test_occurrences_of_own_series(self):
         fake = reported(("/c/own.ics", '"e2"', EXPANDED))
         with mock.patch.object(caldav, "request", fake):

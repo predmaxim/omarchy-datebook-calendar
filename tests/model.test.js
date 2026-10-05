@@ -125,6 +125,7 @@ eq(M.linkify("Zoom: https://zoom.us/j/1?pwd=a&b=2, room <5>"),
    'Zoom: <a href="https://zoom.us/j/1?pwd=a&amp;b=2">https://zoom.us/j/1?pwd=a&amp;b=2</a>, room &lt;5&gt;', "linkify: https link, text escaped, trailing comma left out")
 eq(M.linkify("http://x.ru and javascript:alert(1) and \"https://a.ru/x\"."),
    'http://x.ru and javascript:alert(1) and &quot;<a href="https://a.ru/x">https://a.ru/x</a>&quot;.', "linkify: only https, quotes and dot outside")
+eq(M.linkify("a\nb"), "a<br>b", "linkify: line breaks kept")
 eq(M.linkify(""), "", "linkify: empty")
 eq(["accepted", "tentative", "declined", "needsAction"].map(r => M.answerLabel({ response: r }, en)),
    ["Accepted", "Maybe", "Declined", "Choose"], "answerLabel: the answer made, else Choose")
