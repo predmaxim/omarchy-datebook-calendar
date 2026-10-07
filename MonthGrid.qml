@@ -18,6 +18,7 @@ Item {
   property var byDay: ({})
   property bool use24h: false
   property date now: new Date()                  // past events dim; the panel's clock
+  property var cursorEvent: null                 // the event under the keyboard cursor
   property color foreground: Color.foreground
   property string fontFamily: Style.font.family
   property var tr: Model.english                 // I18n.translator from the panel
@@ -81,6 +82,8 @@ Item {
           readonly property bool selected: modelData.key === month.selectedKey
           readonly property bool overflow: events.length > month.fits
           readonly property int shown: overflow ? Math.max(0, month.fits - 1) : events.length
+          // The chips shown start late enough to include the cursor's event.
+          readonly property int first: selected ? Math.max(0, events.indexOf(month.cursorEvent) - shown + 1) : 0
           width: month.colWidth
           height: month.rowHeight
           color: selected ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.10)
@@ -132,17 +135,21 @@ Item {
             opacity: cell.modelData.inMonth ? 1 : 0.55
 
             Repeater {
-              model: cell.events.slice(0, cell.shown)
+              model: cell.events.slice(cell.first, cell.first + cell.shown)
 
               Rectangle {
                 id: chip
                 required property var modelData
+                readonly property bool hasCursor: chip.modelData === month.cursorEvent
+                readonly property bool lit: chipMouse.containsMouse || hasCursor
                 width: parent.width
                 height: month.chipHeight
                 radius: Style.cornerRadius
                 color: chip.modelData.allDay
-                       ? Qt.rgba(Qt.color(chip.modelData.color).r, Qt.color(chip.modelData.color).g, Qt.color(chip.modelData.color).b, chipMouse.containsMouse ? 0.45 : 0.30)
-                       : chipMouse.containsMouse ? Style.hoverFillFor(month.foreground, Color.accent) : "transparent"
+                       ? Qt.rgba(Qt.color(chip.modelData.color).r, Qt.color(chip.modelData.color).g, Qt.color(chip.modelData.color).b, chip.lit ? 0.45 : 0.30)
+                       : chip.lit ? Style.hoverFillFor(month.foreground, Color.accent) : "transparent"
+                border.width: chip.hasCursor ? Style.spacing.hairline : 0
+                border.color: Color.accent
                 opacity: chip.modelData.declined ? 0.5 : Model.isPast(chip.modelData, month.now.getTime()) ? 0.6 : 1
 
                 Rectangle {

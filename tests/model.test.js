@@ -4,7 +4,7 @@ const fs = require("fs")
 const path = require("path")
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8")
 const M = new Function(src + "; return { nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english," +
-  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify, answerLabel, isInvitation, boldTime, isPast, cardStart, chord, shiftKey, PANEL_KEYS, CARD_KEYS, SETTINGS_KEYS }")()
+  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify, answerLabel, isInvitation, boldTime, isPast, cardStart, chord, shiftKey, PANEL_KEYS, EVENTS_KEYS, CARD_KEYS, SETTINGS_KEYS }")()
 const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "I18n.js"), "utf8").replace(/^\.pragma.*$/m, "")
 const I = new Function(i18nSrc + "; return { translator, textLanguage, formatLocaleName, TABLES }")()
 
@@ -55,9 +55,9 @@ eq(M.boldTime("a<b & c"), "a&lt;b &amp; c", "boldTime: no time, markup escaped")
   eq([M.chord(0x52, 27, Ctrl), M.chord(0x41a, 27, Ctrl), M.chord(0x411, 59, Ctrl), M.chord(0x31, 10, 0)],
      ["Ctrl+R", "Ctrl+R", "Ctrl+,", "1"], "chord: Latin, the Russian layout by scan code, digits")
   eq(M.chord(0x416, 47, 0), "", "chord: an unmapped Cyrillic key")
-  const tables = [M.PANEL_KEYS, M.CARD_KEYS, M.SETTINGS_KEYS]
+  const tables = [M.PANEL_KEYS, M.EVENTS_KEYS, M.CARD_KEYS, M.SETTINGS_KEYS]
   eq(tables.map(t => Object.keys(t).filter(k => !/^((Ctrl|Alt|Shift)\+)*(Left|Right|Up|Down|Home|Enter|Esc|Tab|[0-9]|[A-Z]|,)$/.test(k))),
-     [[], [], []], "key tables: only chords chord() can give")
+     [[], [], [], []], "key tables: only chords chord() can give")
 }
 
 // The selected day moved by a day, week, month or year.

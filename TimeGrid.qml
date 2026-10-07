@@ -16,6 +16,7 @@ Item {
   property var byDay: ({})
   property string todayKey: ""
   property bool use24h: false
+  property var cursorEvent: null   // the event under the keyboard cursor
   property color foreground: Color.foreground
   property string fontFamily: Style.font.family
   property var tr: Model.english                 // I18n.translator from the panel
@@ -130,7 +131,9 @@ Item {
             width: allDayCol.width - Style.space(3)
             height: Style.space(18)
             radius: Style.cornerRadius
-            color: Qt.rgba(Qt.color(modelData.color).r, Qt.color(modelData.color).g, Qt.color(modelData.color).b, 0.28)
+            color: Qt.rgba(Qt.color(modelData.color).r, Qt.color(modelData.color).g, Qt.color(modelData.color).b, modelData === grid.cursorEvent ? 0.42 : 0.28)
+            border.width: modelData === grid.cursorEvent ? Style.spacing.hairline : 0
+            border.color: Color.accent
             opacity: modelData.declined ? 0.5 : Model.isPast(modelData, grid.now.getTime()) ? 0.6 : 1
 
             Text {
@@ -184,6 +187,13 @@ Item {
     }
     Component.onCompleted: scrollToNow()
     onContentHeightChanged: scrollToNow()
+
+    // The cursor's block scrolled into sight, with a little room around it.
+    function reveal(y, h) {
+      var room = Style.space(8)
+      if (y - room < contentY) contentY = Math.max(0, y - room)
+      else if (y + h + room > contentY + height) contentY = Math.min(contentHeight - height, y + h + room - height)
+    }
 
     Item {
       width: scroller.width
@@ -253,13 +263,17 @@ Item {
               id: block
               required property var modelData
               readonly property var ev: modelData.event
+              readonly property bool hasCursor: ev === grid.cursorEvent
               readonly property real slot: (dayCol.width - Style.space(4)) / modelData.columns
+              onHasCursorChanged: if (hasCursor) scroller.reveal(y, height)
               x: Style.space(2) + modelData.column * slot
               y: (modelData.top - grid.hours.first * 60) / 60 * grid.hourHeight + 1
               width: slot - Style.space(2)
               height: Math.max(Style.space(16), (modelData.bottom - modelData.top) / 60 * grid.hourHeight - 2)
               radius: Style.cornerRadius
-              color: Qt.rgba(Qt.color(ev.color).r, Qt.color(ev.color).g, Qt.color(ev.color).b, blockMouse.containsMouse ? 0.42 : 0.28)
+              color: Qt.rgba(Qt.color(ev.color).r, Qt.color(ev.color).g, Qt.color(ev.color).b, blockMouse.containsMouse || hasCursor ? 0.42 : 0.28)
+              border.width: hasCursor ? Style.spacing.hairline : 0
+              border.color: Color.accent
               opacity: ev.declined ? 0.45 : Model.isPast(ev, grid.now.getTime()) ? 0.6 : 1
               clip: true
 

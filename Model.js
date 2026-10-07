@@ -641,10 +641,13 @@ var PANEL_KEYS = {
   "Shift+Up": ["move", "year", -1], "Shift+Down": ["move", "year", 1],
   "Home": ["today"], "0": ["compact"],
   "1": ["view", "day"], "2": ["view", "week"], "3": ["view", "workweek"], "4": ["view", "month"], "5": ["view", "year"],
-  "Enter": ["card"], "Ctrl+Enter": ["join"], "Alt+Enter": ["web"],
+  "Enter": ["list"], "Ctrl+Enter": ["join"], "Alt+Enter": ["web"],
   "Ctrl+R": ["sync"], "Ctrl+,": ["settings"],
   "Tab": ["tab", 1], "Shift+Tab": ["tab", -1], "Esc": ["close"]
 }
+// In the selected day's events (after Enter): these first, then the panel's,
+// and a key that moves the day leaves the events.
+var EVENTS_KEYS = { "Up": ["event", -1], "Down": ["event", 1], "Enter": ["card"], "Esc": ["leave"] }
 var CARD_KEYS = {
   "Up": ["step", -1], "Down": ["step", 1], "Enter": ["step", 1],
   "Ctrl+Enter": ["join"], "Alt+Enter": ["web"],
