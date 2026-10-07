@@ -4,7 +4,7 @@ const fs = require("fs")
 const path = require("path")
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8")
 const M = new Function(src + "; return { nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english," +
-  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify, answerLabel, isInvitation, boldTime, isPast }")()
+  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify, answerLabel, isInvitation, boldTime, isPast, cardStart, latinKey }")()
 const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "I18n.js"), "utf8").replace(/^\.pragma.*$/m, "")
 const I = new Function(i18nSrc + "; return { translator, textLanguage, formatLocaleName, TABLES }")()
 
@@ -32,6 +32,21 @@ eq(M.boldTime("a<b & c"), "a&lt;b &amp; c", "boldTime: no time, markup escaped")
   eq(M.isPast({ start: day, end: M.addDays(day, 1), allDay: true }, nowMs), false, "isPast: all-day today")
   eq(M.isPast({ start: M.addDays(day, -1), end: M.addDays(day, -1), allDay: true }, nowMs), true, "isPast: all-day, end not after start")
 }
+
+// The card Enter opens: the first timed event not over yet, else the day's first.
+{
+  const nowMs = new Date(2026, 8, 28, 9, 50).getTime(), day = M.keyForDate(new Date(nowMs))
+  const t = (h, m) => new Date(2026, 8, 28, h, m).toISOString()
+  const allDay = { start: day, end: M.addDays(day, 1), allDay: true }
+  const past = { start: t(8, 0), end: t(9, 0) }, now = { start: t(9, 30), end: t(10, 0) }
+  eq(M.cardStart([allDay, past, now], nowMs), 2, "cardStart: skips all-day and past")
+  eq(M.cardStart([allDay, past], nowMs), 0, "cardStart: all over, the first")
+  eq(M.cardStart([], nowMs), -1, "cardStart: no events")
+}
+
+// Letter keys in the Russian layout act as the same keys in the Latin one.
+eq(["ы", "Ы", "е", "ц", "х", "ъ", "Х", "Ъ", "s", "[", "1", "."].map(M.latinKey),
+   ["s", "S", "t", "w", "[", "]", "{", "}", "s", "[", "1", "."], "latinKey: Russian to Latin, the rest as is")
 
 // Next up.
 const now = new Date(2026, 8, 28, 9, 50), k = M.keyForDate(now)

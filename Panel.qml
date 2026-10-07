@@ -236,12 +236,26 @@ Panel {
   }
 
   // ---- The event card (EventCard.qml). Open, the panel's own keys step
-  //      aside: Esc and Enter close the card, not the panel.
+  //      aside: Esc closes the card, not the panel; Enter goes on to the
+  //      day's next event and past the last one closes.
   property var cardEvent: null
   readonly property bool cardOpen: cardEvent !== null
 
   function openCard(ev) {
     if (ev && ev.uid) root.cardEvent = ev
+  }
+
+  // Enter on the panel: the selected day's event (Model.cardStart).
+  function openDayCard() {
+    var i = Model.cardStart(root.selectedEvents, root.clockNow.getTime())
+    if (i >= 0) root.openCard(root.selectedEvents[i])
+  }
+
+  function nextCard() {
+    var rows = root.selectedEvents, ev = root.cardEvent
+    var i = rows.findIndex(function(r) { return r.uid === ev.uid && r.start === ev.start })
+    if (i >= 0 && i + 1 < rows.length) root.cardEvent = rows[i + 1]
+    else root.closeCard()
   }
 
   function closeCard() {
@@ -635,11 +649,12 @@ Panel {
         if (dx !== 0) root.step(dx)
         if (dy !== 0 && (root.viewMode === "month" || !root.modern)) root.moveYear(dy)
       }
-      onActivateRequested: root.settingsOpen ? root.activateSetting(root.settingsCursor) : root.goToToday()
+      onActivateRequested: root.settingsOpen ? root.activateSetting(root.settingsCursor) : root.openDayCard()
       onCloseRequested: root.settingsOpen ? root.settingsOpen = false : root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
-      onTextKey: function(t) {
+      onTextKey: function(text) {
         if (root.settingsOpen) return
+        var t = Model.latinKey(text)
         if (t === "s" || t === "S") { root.openSettings(); return }
         if (t >= "1" && t <= "5") { root.setView(Model.VIEWS[Number(t) - 1]); root.setLayout(true) }
         else if (t === "[") root.step(-1)
@@ -1150,6 +1165,7 @@ Panel {
             foreground: root.contentForeground
             fontFamily: root.contentFontFamily
             onClose: root.closeCard()
+            onNext: root.nextCard()
             onOpenLink: function(url) { root.openUrl(url) }
             onRespond: function(answer) { root.respondFromCard(answer) }
           }

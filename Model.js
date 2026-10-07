@@ -609,6 +609,25 @@ function isPast(row, nowMs) {
   return new Date(row.end).getTime() <= nowMs
 }
 
+// The card Enter opens on a day: the first timed event not over yet (on
+// today, the meeting on now or next), else the day's first; -1 with none.
+function cardStart(rows, nowMs) {
+  for (var i = 0; i < rows.length; i++)
+    if (!rows[i].allDay && !isPast(rows[i], nowMs)) return i
+  return rows.length ? 0 : -1
+}
+
+// Letter keys typed in the Russian layout, as the same keys give in the
+// Latin one, so the panel's hotkeys work whichever layout is on.
+// ponytail: Russian only; another non-Latin layout needs scan codes (event.nativeScanCode).
+var RU_KEYS = "йцукенгшщзхъфывапролджэячсмитьбюёЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮЁ"
+var LATIN_KEYS = "qwertyuiop[]asdfghjkl;'zxcvbnm,.`QWERTYUIOP{}ASDFGHJKL:\"ZXCVBNM<>~"
+
+function latinKey(t) {
+  var i = RU_KEYS.indexOf(t)
+  return i < 0 ? t : LATIN_KEYS.charAt(i)
+}
+
 // Reminders that are due now and haven't fired: [{id, event, minutes}], where
 // minutes is how long until the start (negative once it has begun).
 function dueReminders(data, calendars, nowMs, fired) {

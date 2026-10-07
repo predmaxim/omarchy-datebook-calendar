@@ -17,6 +17,7 @@ Item {
   property var labelLocale: Qt.locale("en_US")   // the format locale
 
   signal close()
+  signal next()                                  // Enter: the day's next event
   signal openLink(string url)
   signal respond(string answer)
 
@@ -49,8 +50,11 @@ Item {
     spacing: Style.space(8)
     focus: true
     Keys.onPressed: function(event) {
-      if (event.key === Qt.Key_Escape || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+      if (event.key === Qt.Key_Escape) {
         card.close()
+        event.accepted = true
+      } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+        card.next()
         event.accepted = true
       }
     }

@@ -70,7 +70,8 @@ Russian dates.
 | `t` | today |
 | `w` | first day of the week |
 | `s` | Settings (also the gear in the header): ↑/↓ rows, Enter opens/runs/toggles, Esc back to the calendar. The rows: clock format, time zone, first day of week, then a switch per calendar |
-| Esc, Enter | close the event card |
+| Enter | the selected day's event card (on today, the meeting on now or next); in the card Enter goes to the day's next event, past the last it closes |
+| Esc | close the event card |
 
 Sync runs every 3 minutes and when you open the calendar; `calendar-ctl sync`
 runs it by hand. Calendars are switched on and off in Settings (or `calendar-ctl choose` in a terminal);
