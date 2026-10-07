@@ -4,7 +4,7 @@ const fs = require("fs")
 const path = require("path")
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8")
 const M = new Function(src + "; return { nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english," +
-  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify, answerLabel, isInvitation, boldTime, isPast, cardStart, chord, shiftKey, PANEL_KEYS, EVENTS_KEYS, CARD_KEYS, SETTINGS_KEYS }")()
+  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify, answerLabel, isInvitation, boldTime, isPast, cardStart, chord, shiftKey, PANEL_KEYS, EVENTS_KEYS, CARD_KEYS, SETTINGS_KEYS, sameEvent }")()
 const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "I18n.js"), "utf8").replace(/^\.pragma.*$/m, "")
 const I = new Function(i18nSrc + "; return { translator, textLanguage, formatLocaleName, TABLES }")()
 
@@ -59,6 +59,10 @@ eq(M.boldTime("a<b & c"), "a&lt;b &amp; c", "boldTime: no time, markup escaped")
   eq(tables.map(t => Object.keys(t).filter(k => !/^((Ctrl|Alt|Shift)\+)*(Left|Right|Up|Down|Home|Enter|Esc|Tab|[0-9]|[A-Z]|,)$/.test(k))),
      [[], [], [], []], "key tables: only chords chord() can give")
 }
+
+// The same event in another copy (a Repeater's modelData is one): by uid and start.
+eq([M.sameEvent({ uid: "a", start: "1" }, { uid: "a", start: "1" }), M.sameEvent({ uid: "a", start: "1" }, { uid: "a", start: "2" }),
+    M.sameEvent({ uid: "a", start: "1" }, null), M.sameEvent(null, null)], [true, false, false, false], "sameEvent: uid and start, null never")
 
 // The selected day moved by a day, week, month or year.
 eq([M.shiftKey("2026-12-31", "day", 1), M.shiftKey("2026-10-08", "week", -1), M.shiftKey("2026-01-31", "month", 1),

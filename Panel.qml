@@ -269,7 +269,7 @@ Panel {
   }
 
   function rowIndex(ev) {
-    return root.selectedEvents.findIndex(function(r) { return r.uid === ev.uid && r.start === ev.start })
+    return root.selectedEvents.findIndex(function(r) { return Model.sameEvent(r, ev) })
   }
 
   // ↑/↓ and Enter in the card: the day's previous or next event; going on
@@ -1571,8 +1571,8 @@ Panel {
                   width: agenda.width
                   height: Math.max(eventText.implicitHeight, rowButtons.height) + Style.space(8)
                   radius: Style.cornerRadius
-                  color: rowMouse.containsMouse || modelData === root.cursorEvent ? Style.hoverFillFor(root.contentForeground, Color.accent) : "transparent"
-                  border.width: modelData === root.cursorEvent ? Style.spacing.hairline : 0
+                  color: rowMouse.containsMouse || Model.sameEvent(modelData, root.cursorEvent) ? Style.hoverFillFor(root.contentForeground, Color.accent) : "transparent"
+                  border.width: Model.sameEvent(modelData, root.cursorEvent) ? Math.max(1, Style.space(1.5)) : 0
                   border.color: Color.accent
                   opacity: modelData.declined ? 0.5 : Model.isPast(modelData, root.clockNow.getTime()) ? 0.6 : 1
 

@@ -15,6 +15,7 @@ Item {
   property var days: []            // day keys, left to right
   property var byDay: ({})
   property string todayKey: ""
+  property string selectedKey: ""   // ringed and tinted, as in the month and the year
   property bool use24h: false
   property var cursorEvent: null   // the event under the keyboard cursor
   property color foreground: Color.foreground
@@ -63,12 +64,14 @@ Item {
         id: head
         required property var modelData
         readonly property date date: Model.keyToDate(modelData)
+        readonly property bool selected: modelData === grid.selectedKey
         width: grid.colWidth
         height: header.height
         radius: Style.cornerRadius
-        color: headMouse.containsMouse ? Style.hoverFillFor(grid.foreground, Color.accent) : "transparent"
-        border.width: modelData === grid.todayKey ? Style.spacing.hairline : 0
-        border.color: Style.normalBorderFor(grid.foreground, Color.accent)
+        color: selected ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.10)
+             : headMouse.containsMouse ? Style.hoverFillFor(grid.foreground, Color.accent) : "transparent"
+        border.width: selected ? Math.max(1, Style.space(1.5)) : modelData === grid.todayKey ? Style.spacing.hairline : 0
+        border.color: selected ? Color.accent : Style.normalBorderFor(grid.foreground, Color.accent)
 
         Column {
           anchors.centerIn: parent
@@ -131,8 +134,8 @@ Item {
             width: allDayCol.width - Style.space(3)
             height: Style.space(18)
             radius: Style.cornerRadius
-            color: Qt.rgba(Qt.color(modelData.color).r, Qt.color(modelData.color).g, Qt.color(modelData.color).b, modelData === grid.cursorEvent ? 0.42 : 0.28)
-            border.width: modelData === grid.cursorEvent ? Style.spacing.hairline : 0
+            color: Qt.rgba(Qt.color(modelData.color).r, Qt.color(modelData.color).g, Qt.color(modelData.color).b, Model.sameEvent(modelData, grid.cursorEvent) ? 0.42 : 0.28)
+            border.width: Model.sameEvent(modelData, grid.cursorEvent) ? Math.max(1, Style.space(1.5)) : 0
             border.color: Color.accent
             opacity: modelData.declined ? 0.5 : Model.isPast(modelData, grid.now.getTime()) ? 0.6 : 1
 
@@ -263,7 +266,7 @@ Item {
               id: block
               required property var modelData
               readonly property var ev: modelData.event
-              readonly property bool hasCursor: ev === grid.cursorEvent
+              readonly property bool hasCursor: Model.sameEvent(ev, grid.cursorEvent)
               readonly property real slot: (dayCol.width - Style.space(4)) / modelData.columns
               onHasCursorChanged: if (hasCursor) scroller.reveal(y, height)
               x: Style.space(2) + modelData.column * slot
@@ -272,7 +275,7 @@ Item {
               height: Math.max(Style.space(16), (modelData.bottom - modelData.top) / 60 * grid.hourHeight - 2)
               radius: Style.cornerRadius
               color: Qt.rgba(Qt.color(ev.color).r, Qt.color(ev.color).g, Qt.color(ev.color).b, blockMouse.containsMouse || hasCursor ? 0.42 : 0.28)
-              border.width: hasCursor ? Style.spacing.hairline : 0
+              border.width: hasCursor ? Math.max(1, Style.space(1.5)) : 0
               border.color: Color.accent
               opacity: ev.declined ? 0.45 : Model.isPast(ev, grid.now.getTime()) ? 0.6 : 1
               clip: true

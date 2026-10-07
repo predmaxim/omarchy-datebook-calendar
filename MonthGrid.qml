@@ -83,7 +83,7 @@ Item {
           readonly property bool overflow: events.length > month.fits
           readonly property int shown: overflow ? Math.max(0, month.fits - 1) : events.length
           // The chips shown start late enough to include the cursor's event.
-          readonly property int first: selected ? Math.max(0, events.indexOf(month.cursorEvent) - shown + 1) : 0
+          readonly property int first: selected ? Math.max(0, events.findIndex(function(e) { return Model.sameEvent(e, month.cursorEvent) }) - shown + 1) : 0
           width: month.colWidth
           height: month.rowHeight
           color: selected ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.10)
@@ -140,7 +140,7 @@ Item {
               Rectangle {
                 id: chip
                 required property var modelData
-                readonly property bool hasCursor: chip.modelData === month.cursorEvent
+                readonly property bool hasCursor: Model.sameEvent(chip.modelData, month.cursorEvent)
                 readonly property bool lit: chipMouse.containsMouse || hasCursor
                 width: parent.width
                 height: month.chipHeight
@@ -148,7 +148,7 @@ Item {
                 color: chip.modelData.allDay
                        ? Qt.rgba(Qt.color(chip.modelData.color).r, Qt.color(chip.modelData.color).g, Qt.color(chip.modelData.color).b, chip.lit ? 0.45 : 0.30)
                        : chip.lit ? Style.hoverFillFor(month.foreground, Color.accent) : "transparent"
-                border.width: chip.hasCursor ? Style.spacing.hairline : 0
+                border.width: chip.hasCursor ? Math.max(1, Style.space(1.5)) : 0
                 border.color: Color.accent
                 opacity: chip.modelData.declined ? 0.5 : Model.isPast(chip.modelData, month.now.getTime()) ? 0.6 : 1
 
