@@ -73,8 +73,8 @@ other thing. Letters go by the key, not the layout.
 | Home | today |
 | `1`–`5` | day, week, work week, month, year |
 | `0` | compact: Omarchy's month and the day's appointments |
-| Enter | the event card: the selected day's (on today, the meeting on now or next) |
-| Ctrl+Enter | join that meeting |
+| Enter | the selected day's events: the only one opens its card; with more, ↑/↓ pick one (on today it starts on the meeting on now or next), Enter opens it, Esc goes back to the days, other keys work as usual. In the year view Enter opens the day |
+| Ctrl+Enter | join the meeting: the one picked, else the one Enter would start on |
 | Alt+Enter | open that event on the web |
 | Ctrl+R | sync now |
 | Ctrl+, | Settings (also the gear in the header): ↑/↓ rows, Enter opens/runs/toggles, Esc back. The rows: clock format, time zone, first day of week, then a switch per calendar |
@@ -89,7 +89,7 @@ In the event card:
 | Ctrl+Enter | join the meeting |
 | Alt+Enter | open the event on the web |
 | Ctrl+1 / Ctrl+2 / Ctrl+3 | accept / maybe / decline an invitation |
-| Esc | close the card |
+| Esc | close the card (back to the day's events if you came from them) |
 
 Sync runs every 3 minutes and when you open the calendar; `calendar-ctl sync`
 runs it by hand. Calendars are switched on and off in Settings (or `calendar-ctl choose` in a terminal);

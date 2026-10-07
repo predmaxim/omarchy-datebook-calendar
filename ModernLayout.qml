@@ -413,6 +413,7 @@ Item {
       byDay: layout.p ? layout.p.eventIndex.byDay : ({})
       use24h: layout.p ? layout.p.use24h : false
       now: layout.p ? layout.p.clockNow : new Date()
+      cursorEvent: layout.p ? layout.p.cursorEvent : null
       foreground: layout.fg
       fontFamily: layout.fontName
       onPickDay: function(key) { layout.p.pickDay(key) }
@@ -430,6 +431,7 @@ Item {
       byDay: layout.p ? layout.p.eventIndex.byDay : ({})
       todayKey: layout.p ? layout.p.todayKey : ""
       use24h: layout.p ? layout.p.use24h : false
+      cursorEvent: layout.p ? layout.p.cursorEvent : null
       foreground: layout.fg
       fontFamily: layout.fontName
       // As many hours as the space allows; the rest scroll.

@@ -234,6 +234,22 @@ Panel {
     }
   }
 
+  // ---- The selected day's events under the keyboard (Enter, then ↑/↓):
+  //      an index into selectedEvents, -1 while the arrows move the day.
+  //      The grids and the stock list mark cursorEvent.
+  property int cursorIndex: -1
+  readonly property var cursorEvent: root.cursorIndex >= 0 ? root.selectedEvents[root.cursorIndex] || null : null
+  onSelectedKeyChanged: root.cursorIndex = -1
+
+  // Enter: a day's only event opens; with more, the cursor goes into them,
+  // on the one on now or next (Model.cardStart). In the year, where events
+  // don't show, the day opens instead.
+  function enterEvents() {
+    if (root.modern && root.viewMode === "year") root.openDay(root.selectedKey)
+    else if (root.selectedEvents.length === 1) root.openCard(root.selectedEvents[0])
+    else root.cursorIndex = Model.cardStart(root.selectedEvents, root.clockNow.getTime())
+  }
+
   // ---- The event card (EventCard.qml). Open, the panel's own keys step
   //      aside and the card's map (Model.CARD_KEYS) takes over.
   property var cardEvent: null
@@ -243,32 +259,38 @@ Panel {
     if (ev && ev.uid) root.cardEvent = ev
   }
 
-  // The event Enter, Ctrl+Enter and Alt+Enter act on: the selected day's
-  // (Model.cardStart).
-  readonly property var dayEvent: root.selectedEvents[Model.cardStart(root.selectedEvents, root.clockNow.getTime())] || null
+  // The event Ctrl+Enter and Alt+Enter act on: the one under the cursor,
+  // else the one Enter would start on.
+  readonly property var dayEvent: root.cursorEvent || root.selectedEvents[Model.cardStart(root.selectedEvents, root.clockNow.getTime())] || null
 
   function openDayLink(kind) {
     var ev = root.dayEvent
     if (ev) root.openUrl(kind === "join" ? (ev.join ? ev.join.url : "") : ev.webLink)
   }
 
+  function rowIndex(ev) {
+    return root.selectedEvents.findIndex(function(r) { return r.uid === ev.uid && r.start === ev.start })
+  }
+
   // ↑/↓ and Enter in the card: the day's previous or next event; going on
   // past the last one closes the card.
   function stepCard(delta) {
-    var rows = root.selectedEvents, ev = root.cardEvent
-    var i = rows.findIndex(function(r) { return r.uid === ev.uid && r.start === ev.start })
+    var rows = root.selectedEvents, i = root.rowIndex(root.cardEvent)
     if (i >= 0 && rows[i + delta]) root.cardEvent = rows[i + delta]
     else if (delta > 0) root.closeCard()
   }
 
-  // One action from the panel's or the settings' key map (Model.PANEL_KEYS, Model.SETTINGS_KEYS).
+  // One action from a key map (Model.PANEL_KEYS, Model.EVENTS_KEYS, Model.SETTINGS_KEYS).
   function runKey(a) {
     var what = a[0]
     if (what === "move") root.pickDay(Model.shiftKey(root.selectedKey, a[1], a[2]))
     else if (what === "today") root.goToToday()
     else if (what === "view") { root.setView(a[1]); root.setLayout(true) }
     else if (what === "compact") root.setLayout(false)
-    else if (what === "card") root.openCard(root.dayEvent)
+    else if (what === "list") root.enterEvents()
+    else if (what === "event") root.cursorIndex = Math.max(0, Math.min(root.selectedEvents.length - 1, root.cursorIndex + a[1]))
+    else if (what === "card") root.openCard(root.cursorEvent)
+    else if (what === "leave") root.cursorIndex = -1
     else if (what === "join" || what === "web") root.openDayLink(what)
     else if (what === "sync") root.syncNow()
     else if (what === "settings") root.openSettings()
@@ -279,7 +301,10 @@ Panel {
     else if (what === "back") root.settingsOpen = false
   }
 
+  // A card opened from the events leaves the cursor on the event it ended
+  // on, so ↑/↓ carry on from there.
   function closeCard() {
+    if (root.cursorIndex >= 0 && root.cardEvent) root.cursorIndex = Math.max(0, root.rowIndex(root.cardEvent))
     root.cardEvent = null
     Qt.callLater(function() { if (keyCatcher) keyCatcher.forceActiveFocus() })
   }
@@ -501,6 +526,7 @@ Panel {
     root.today = new Date()
     root.goToToday()
     root.selectedKey = root.todayKey
+    root.cursorIndex = -1
     // Opening the panel is when stale data shows; a minute is fresh enough.
     if (Date.now() - root.lastSyncAt > 60000) root.syncNow()
   }
@@ -666,8 +692,8 @@ Panel {
       focus: true
       Keys.onPressed: function(event) {
         if (root.editingLife || root.cardOpen || (root.formatDropdown !== null && root.formatDropdown.popupOpen)) return
-        var keys = root.settingsOpen ? Model.SETTINGS_KEYS : Model.PANEL_KEYS
-        var a = keys[Model.chord(event.key, event.nativeScanCode, event.modifiers)]
+        var c = Model.chord(event.key, event.nativeScanCode, event.modifiers)
+        var a = root.settingsOpen ? Model.SETTINGS_KEYS[c] : (root.cursorIndex >= 0 && Model.EVENTS_KEYS[c]) || Model.PANEL_KEYS[c]
         if (!a) return
         event.accepted = true
         root.runKey(a)
@@ -1545,7 +1571,9 @@ Panel {
                   width: agenda.width
                   height: Math.max(eventText.implicitHeight, rowButtons.height) + Style.space(8)
                   radius: Style.cornerRadius
-                  color: rowMouse.containsMouse ? Style.hoverFillFor(root.contentForeground, Color.accent) : "transparent"
+                  color: rowMouse.containsMouse || modelData === root.cursorEvent ? Style.hoverFillFor(root.contentForeground, Color.accent) : "transparent"
+                  border.width: modelData === root.cursorEvent ? Style.spacing.hairline : 0
+                  border.color: Color.accent
                   opacity: modelData.declined ? 0.5 : Model.isPast(modelData, root.clockNow.getTime()) ? 0.6 : 1
 
                   Rectangle {
