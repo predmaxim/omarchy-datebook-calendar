@@ -61,7 +61,7 @@ Item {
       PanelActionButton {
         anchors.verticalCenter: parent.verticalCenter
         iconText: "󰅁"
-        tooltipText: layout.tr("Previous ([)")
+        tooltipText: layout.tr("Previous")
         foreground: layout.fg
         fontFamily: layout.fontName
         onClicked: layout.p.step(-1)
@@ -69,7 +69,7 @@ Item {
       Button {
         anchors.verticalCenter: parent.verticalCenter
         text: layout.tr("Today")
-        tooltipText: layout.tr("Back to today (t)")
+        tooltipText: layout.tr("Back to today") + " (Home)"
         foreground: layout.fg
         fontFamily: layout.fontName
         onClicked: layout.p.goToToday()
@@ -77,7 +77,7 @@ Item {
       PanelActionButton {
         anchors.verticalCenter: parent.verticalCenter
         iconText: "󰅂"
-        tooltipText: layout.tr("Next (])")
+        tooltipText: layout.tr("Next")
         foreground: layout.fg
         fontFamily: layout.fontName
         onClicked: layout.p.step(1)
@@ -110,7 +110,7 @@ Item {
         verticalPadding: Style.space(2)
         width: Math.max(implicitWidth, implicitHeight)   // square, like an icon button
         height: width
-        tooltipText: layout.tr(layout.p && layout.p.syncing ? "Syncing…" : "Sync now")
+        tooltipText: layout.tr(layout.p && layout.p.syncing ? "Syncing…" : "Sync now") + " (Ctrl+R)"
         foreground: layout.fg
         fontFamily: layout.fontName
         iconSpinning: !!(layout.p && layout.p.syncing)
@@ -125,7 +125,7 @@ Item {
         verticalPadding: Style.space(2)
         width: Math.max(implicitWidth, implicitHeight)   // square, like an icon button
         height: width
-        tooltipText: layout.tr("Compact: Omarchy's month and the day's appointments")
+        tooltipText: layout.tr("Compact: Omarchy's month and the day's appointments") + " (0)"
         foreground: layout.fg
         fontFamily: layout.fontName
         onClicked: layout.p.setLayout(false)
@@ -139,7 +139,7 @@ Item {
         verticalPadding: Style.space(2)
         width: Math.max(implicitWidth, implicitHeight)   // square, like an icon button
         height: width
-        tooltipText: layout.tr("Settings") + " (S)"
+        tooltipText: layout.tr("Settings") + " (Ctrl+,)"
         foreground: layout.fg
         fontFamily: layout.fontName
         onClicked: layout.p.openSettings()
@@ -500,7 +500,7 @@ Item {
         foreground: layout.fg
         fontFamily: layout.fontName
         onClose: layout.p.closeCard()
-        onNext: layout.p.nextCard()
+        onStep: function(delta) { layout.p.stepCard(delta) }
         onOpenLink: function(url) { layout.p.openUrl(url) }
         onRespond: function(answer) { layout.p.respondFromCard(answer) }
       }

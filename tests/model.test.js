@@ -4,7 +4,7 @@ const fs = require("fs")
 const path = require("path")
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8")
 const M = new Function(src + "; return { nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english," +
-  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify, answerLabel, isInvitation, boldTime, isPast, cardStart, latinKey }")()
+  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify, answerLabel, isInvitation, boldTime, isPast, cardStart, chord, shiftKey, PANEL_KEYS, CARD_KEYS, SETTINGS_KEYS }")()
 const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "I18n.js"), "utf8").replace(/^\.pragma.*$/m, "")
 const I = new Function(i18nSrc + "; return { translator, textLanguage, formatLocaleName, TABLES }")()
 
@@ -44,9 +44,26 @@ eq(M.boldTime("a<b & c"), "a&lt;b &amp; c", "boldTime: no time, markup escaped")
   eq(M.cardStart([], nowMs), -1, "cardStart: no events")
 }
 
-// Letter keys in the Russian layout act as the same keys in the Latin one.
-eq(["ы", "Ы", "е", "ц", "х", "ъ", "Х", "Ъ", "s", "[", "1", "."].map(M.latinKey),
-   ["s", "S", "t", "w", "[", "]", "{", "}", "s", "[", "1", "."], "latinKey: Russian to Latin, the rest as is")
+// Keys as chords: modifiers by name, letters by scan code in any layout.
+{
+  const Left = 0x01000012, Return = 0x01000004, Enter = 0x01000005, Backtab = 0x01000002
+  const Shift = 0x02000000, Ctrl = 0x04000000, Alt = 0x08000000, Keypad = 0x20000000
+  eq([M.chord(Left, 113, 0), M.chord(Left, 113, Shift), M.chord(Left, 113, Shift | Keypad)],
+     ["Left", "Shift+Left", "Shift+Left"], "chord: arrows, Shift, keypad flag ignored")
+  eq([M.chord(Return, 36, Ctrl), M.chord(Enter, 104, Alt), M.chord(Backtab, 23, Shift)],
+     ["Ctrl+Enter", "Alt+Enter", "Shift+Tab"], "chord: Enter both keys, Shift+Tab")
+  eq([M.chord(0x52, 27, Ctrl), M.chord(0x41a, 27, Ctrl), M.chord(0x411, 59, Ctrl), M.chord(0x31, 10, 0)],
+     ["Ctrl+R", "Ctrl+R", "Ctrl+,", "1"], "chord: Latin, the Russian layout by scan code, digits")
+  eq(M.chord(0x416, 47, 0), "", "chord: an unmapped Cyrillic key")
+  const tables = [M.PANEL_KEYS, M.CARD_KEYS, M.SETTINGS_KEYS]
+  eq(tables.map(t => Object.keys(t).filter(k => !/^((Ctrl|Alt|Shift)\+)*(Left|Right|Up|Down|Home|Enter|Esc|Tab|[0-9]|[A-Z]|,)$/.test(k))),
+     [[], [], []], "key tables: only chords chord() can give")
+}
+
+// The selected day moved by a day, week, month or year.
+eq([M.shiftKey("2026-12-31", "day", 1), M.shiftKey("2026-10-08", "week", -1), M.shiftKey("2026-01-31", "month", 1),
+    M.shiftKey("2026-03-31", "month", -1), M.shiftKey("2024-02-29", "year", 1)],
+   ["2027-01-01", "2026-10-01", "2026-02-28", "2026-02-28", "2025-02-28"], "shiftKey: across the year, month ends clamped")
 
 // Next up.
 const now = new Date(2026, 8, 28, 9, 50), k = M.keyForDate(now)
