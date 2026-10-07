@@ -17,7 +17,7 @@ Item {
   property var labelLocale: Qt.locale("en_US")   // the format locale
 
   signal close()
-  signal next()                                  // Enter: the day's next event
+  signal step(int delta)                         // ↑/↓, Enter: the day's previous or next event
   signal openLink(string url)
   signal respond(string answer)
 
@@ -49,14 +49,17 @@ Item {
     width: parent.width
     spacing: Style.space(8)
     focus: true
+    // The card's key map (Model.CARD_KEYS); a key with nothing to do here
+    // (no link, not an invitation) is still kept from the panel.
     Keys.onPressed: function(event) {
-      if (event.key === Qt.Key_Escape) {
-        card.close()
-        event.accepted = true
-      } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-        card.next()
-        event.accepted = true
-      }
+      var a = Model.CARD_KEYS[Model.chord(event.key, event.nativeScanCode, event.modifiers)]
+      if (!a) return
+      event.accepted = true
+      if (a[0] === "close") card.close()
+      else if (a[0] === "step") card.step(a[1])
+      else if (a[0] === "join") { if (card.hasJoin) card.openLink(card.event.join.url) }
+      else if (a[0] === "web") { if (card.hasWeb) card.openLink(card.event.webLink) }
+      else if (a[0] === "answer") { if (Model.isInvitation(card.event) && !card.busy) card.respond(a[1]) }
     }
 
     Text {

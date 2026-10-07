@@ -63,15 +63,33 @@ Russian dates.
 
 ## Controls
 
+Arrows move the selected day, Shift moves it further; Ctrl acts, Alt does the
+other thing. Letters go by the key, not the layout.
+
 | | |
 |---|---|
+| ←/→, ↑/↓ | a day, a week back / on |
+| Shift+←/→, Shift+↑/↓ | a month, a year back / on |
+| Home | today |
 | `1`–`5` | day, week, work week, month, year |
-| `[` `]`, arrows | previous / next |
-| `t` | today |
-| `w` | first day of the week |
-| `s` | Settings (also the gear in the header): ↑/↓ rows, Enter opens/runs/toggles, Esc back to the calendar. The rows: clock format, time zone, first day of week, then a switch per calendar |
-| Enter | the selected day's event card (on today, the meeting on now or next); in the card Enter goes to the day's next event, past the last it closes |
-| Esc | close the event card |
+| `0` | compact: Omarchy's month and the day's appointments |
+| Enter | the event card: the selected day's (on today, the meeting on now or next) |
+| Ctrl+Enter | join that meeting |
+| Alt+Enter | open that event on the web |
+| Ctrl+R | sync now |
+| Ctrl+, | Settings (also the gear in the header): ↑/↓ rows, Enter opens/runs/toggles, Esc back. The rows: clock format, time zone, first day of week, then a switch per calendar |
+| Tab, Shift+Tab | the next / previous panel on the bar |
+| Esc | close |
+
+In the event card:
+
+| | |
+|---|---|
+| ↑/↓, Enter | the day's previous / next event; Enter past the last one closes the card |
+| Ctrl+Enter | join the meeting |
+| Alt+Enter | open the event on the web |
+| Ctrl+1 / Ctrl+2 / Ctrl+3 | accept / maybe / decline an invitation |
+| Esc | close the card |
 
 Sync runs every 3 minutes and when you open the calendar; `calendar-ctl sync`
 runs it by hand. Calendars are switched on and off in Settings (or `calendar-ctl choose` in a terminal);

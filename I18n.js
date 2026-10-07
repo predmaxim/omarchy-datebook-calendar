@@ -14,9 +14,9 @@ var TABLES = {
     "Previous day": "Предыдущий день", "Previous week": "Предыдущая неделя",
     "Previous month": "Предыдущий месяц", "Previous year": "Предыдущий год",
     "Next day": "Следующий день", "Next week": "Следующая неделя", "Next month": "Следующий месяц",
-    "Next year": "Следующий год", "Previous ([)": "Назад ([)", "Next (])": "Вперёд (])",
+    "Next year": "Следующий год", "Previous": "Назад", "Next": "Вперёд",
     "Today": "Сегодня", "Tomorrow": "Завтра", "Yesterday": "Вчера",
-    "Back to today": "К сегодняшнему дню", "Back to today (t)": "К сегодняшнему дню (t)",
+    "Back to today": "К сегодняшнему дню",
     "Compact: Omarchy's month and the day's appointments": "Свернуть: месяц Omarchy и события дня",
     "Start weeks on %1": "Начинать неделю с: %1", "year": "год",
     // Days and events

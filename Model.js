@@ -617,15 +617,51 @@ function cardStart(rows, nowMs) {
   return rows.length ? 0 : -1
 }
 
-// Letter keys typed in the Russian layout, as the same keys give in the
-// Latin one, so the panel's hotkeys work whichever layout is on.
-// ponytail: Russian only; another non-Latin layout needs scan codes (event.nativeScanCode).
-var RU_KEYS = "йцукенгшщзхъфывапролджэячсмитьбюёЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮЁ"
-var LATIN_KEYS = "qwertyuiop[]asdfghjkl;'zxcvbnm,.`QWERTYUIOP{}ASDFGHJKL:\"ZXCVBNM<>~"
+// ---- Keys. A key press as a chord ("Shift+Left", "Ctrl+R"), then the
+//      panel's, the card's and the settings' maps from chord to action.
+//      Arrows move the selected day, Shift by a month or a year; Ctrl acts,
+//      Alt does the other thing. Letters go by scan code (evdev + 8), so they
+//      work whichever layout is on (the Russian one gives Cyrillic Qt keys).
+var NAMED_KEYS = {
+  0x01000000: "Esc", 0x01000001: "Tab", 0x01000002: "Tab", 0x01000004: "Enter", 0x01000005: "Enter",
+  0x01000010: "Home", 0x01000012: "Left", 0x01000013: "Up", 0x01000014: "Right", 0x01000015: "Down"
+}
+var SCAN_KEYS = { 27: "R", 59: "," }
 
-function latinKey(t) {
-  var i = RU_KEYS.indexOf(t)
-  return i < 0 ? t : LATIN_KEYS.charAt(i)
+function chord(key, scan, modifiers) {
+  var name = NAMED_KEYS[key] || (key > 0x20 && key < 0x7f ? String.fromCharCode(key) : "") || SCAN_KEYS[scan] || ""
+  if (!name) return ""
+  return (modifiers & 0x04000000 ? "Ctrl+" : "") + (modifiers & 0x08000000 ? "Alt+" : "")
+       + (modifiers & 0x10000000 ? "Meta+" : "") + (modifiers & 0x02000000 ? "Shift+" : "") + name
+}
+
+var PANEL_KEYS = {
+  "Left": ["move", "day", -1], "Right": ["move", "day", 1], "Up": ["move", "week", -1], "Down": ["move", "week", 1],
+  "Shift+Left": ["move", "month", -1], "Shift+Right": ["move", "month", 1],
+  "Shift+Up": ["move", "year", -1], "Shift+Down": ["move", "year", 1],
+  "Home": ["today"], "0": ["compact"],
+  "1": ["view", "day"], "2": ["view", "week"], "3": ["view", "workweek"], "4": ["view", "month"], "5": ["view", "year"],
+  "Enter": ["card"], "Ctrl+Enter": ["join"], "Alt+Enter": ["web"],
+  "Ctrl+R": ["sync"], "Ctrl+,": ["settings"],
+  "Tab": ["tab", 1], "Shift+Tab": ["tab", -1], "Esc": ["close"]
+}
+var CARD_KEYS = {
+  "Up": ["step", -1], "Down": ["step", 1], "Enter": ["step", 1],
+  "Ctrl+Enter": ["join"], "Alt+Enter": ["web"],
+  "Ctrl+1": ["answer", "accept"], "Ctrl+2": ["answer", "tentative"], "Ctrl+3": ["answer", "decline"],
+  "Esc": ["close"]
+}
+var SETTINGS_KEYS = { "Up": ["row", -1], "Down": ["row", 1], "Enter": ["pick"], "Esc": ["back"], "Ctrl+,": ["back"] }
+
+// The selected day moved by a day or a week, or by a month or a year to the
+// same date, kept inside the month (31 January + a month is 28 February).
+function shiftKey(key, unit, delta) {
+  if (unit === "day") return addDays(key, delta)
+  if (unit === "week") return addDays(key, 7 * delta)
+  var d = keyToDate(key)
+  var first = new Date(d.getFullYear(), d.getMonth() + (unit === "year" ? 12 : 1) * delta, 1)
+  var last = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()
+  return dateKey(first.getFullYear(), first.getMonth(), Math.min(d.getDate(), last))
 }
 
 // Reminders that are due now and haven't fired: [{id, event, minutes}], where

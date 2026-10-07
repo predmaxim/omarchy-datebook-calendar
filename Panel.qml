@@ -10,9 +10,8 @@ import "I18n.js" as I18n
 // sit beside the weather panel — same hero-over-detail composition, same
 // spacing scale, same small-caps labels.
 //
-// The grid is a read-out rather than a picker: today is the only marked
-// day, and the only thing that moves is which month is on screen —
-// chevrons, the scroll wheel, and the arrow keys all step it.
+// The arrow keys move the selected day (with Shift, by a month or a year)
+// and the view follows it; the chevrons and the scroll wheel step it too.
 //
 // BarWidget.qml owns the bar label and hands this panel the button to
 // anchor against.
@@ -37,8 +36,8 @@ Panel {
   property date today: new Date()
   readonly property string todayKey: Model.keyForDate(today)
 
-  // The month on screen. Stepping moves this and nothing else: the grid is
-  // a read-out, not a picker, so there is no per-day cursor to keep in sync.
+  // The month on screen: the selected day's (pickDay), or a neighbouring
+  // month's day clicked in the stock grid.
   property int viewYear: today.getFullYear()
   property int viewMonth: today.getMonth()
 
@@ -236,8 +235,7 @@ Panel {
   }
 
   // ---- The event card (EventCard.qml). Open, the panel's own keys step
-  //      aside: Esc closes the card, not the panel; Enter goes on to the
-  //      day's next event and past the last one closes.
+  //      aside and the card's map (Model.CARD_KEYS) takes over.
   property var cardEvent: null
   readonly property bool cardOpen: cardEvent !== null
 
@@ -245,17 +243,40 @@ Panel {
     if (ev && ev.uid) root.cardEvent = ev
   }
 
-  // Enter on the panel: the selected day's event (Model.cardStart).
-  function openDayCard() {
-    var i = Model.cardStart(root.selectedEvents, root.clockNow.getTime())
-    if (i >= 0) root.openCard(root.selectedEvents[i])
+  // The event Enter, Ctrl+Enter and Alt+Enter act on: the selected day's
+  // (Model.cardStart).
+  readonly property var dayEvent: root.selectedEvents[Model.cardStart(root.selectedEvents, root.clockNow.getTime())] || null
+
+  function openDayLink(kind) {
+    var ev = root.dayEvent
+    if (ev) root.openUrl(kind === "join" ? (ev.join ? ev.join.url : "") : ev.webLink)
   }
 
-  function nextCard() {
+  // ↑/↓ and Enter in the card: the day's previous or next event; going on
+  // past the last one closes the card.
+  function stepCard(delta) {
     var rows = root.selectedEvents, ev = root.cardEvent
     var i = rows.findIndex(function(r) { return r.uid === ev.uid && r.start === ev.start })
-    if (i >= 0 && i + 1 < rows.length) root.cardEvent = rows[i + 1]
-    else root.closeCard()
+    if (i >= 0 && rows[i + delta]) root.cardEvent = rows[i + delta]
+    else if (delta > 0) root.closeCard()
+  }
+
+  // One action from the panel's or the settings' key map (Model.PANEL_KEYS, Model.SETTINGS_KEYS).
+  function runKey(a) {
+    var what = a[0]
+    if (what === "move") root.pickDay(Model.shiftKey(root.selectedKey, a[1], a[2]))
+    else if (what === "today") root.goToToday()
+    else if (what === "view") { root.setView(a[1]); root.setLayout(true) }
+    else if (what === "compact") root.setLayout(false)
+    else if (what === "card") root.openCard(root.dayEvent)
+    else if (what === "join" || what === "web") root.openDayLink(what)
+    else if (what === "sync") root.syncNow()
+    else if (what === "settings") root.openSettings()
+    else if (what === "tab") root.switchPanel(a[1])
+    else if (what === "close") root.close()
+    else if (what === "row") root.moveSetting(a[1])
+    else if (what === "pick") root.activateSetting(root.settingsCursor)
+    else if (what === "back") root.settingsOpen = false
   }
 
   function closeCard() {
@@ -490,14 +511,10 @@ Panel {
     root.selectedKey = root.todayKey
   }
 
+  // The selected day goes with the month, so the arrows carry on from the
+  // month on screen.
   function moveMonth(delta) {
-    var next = Model.stepMonth(viewYear, viewMonth, delta)
-    root.viewYear = next.year
-    root.viewMonth = next.month
-  }
-
-  function moveYear(delta) {
-    moveMonth(delta * 12)
+    root.pickDay(Model.shiftKey(root.selectedKey, "month", delta))
   }
 
   // Applied locally first so the panel redraws on the click itself; the
@@ -640,29 +657,20 @@ Panel {
     contentHeight: root.modern ? panel.fittedContentHeight(Style.space(780))
                  : panel.fittedContentHeight(calendarColumn.implicitHeight)
 
-    PanelKeyCatcher {
+    // Not the stock PanelKeyCatcher: it hands on no modifiers, and here
+    // Shift, Ctrl and Alt mean something (Model.PANEL_KEYS and the rest). The
+    // card, the life fields and an open dropdown keep their keys.
+    Item {
       id: keyCatcher
       anchors.fill: parent
-      blocked: root.editingLife || root.cardOpen || (root.formatDropdown !== null && root.formatDropdown.popupOpen)
-      onMoveRequested: function(dx, dy) {
-        if (root.settingsOpen) { if (dy !== 0) root.moveSetting(dy); return }
-        if (dx !== 0) root.step(dx)
-        if (dy !== 0 && (root.viewMode === "month" || !root.modern)) root.moveYear(dy)
-      }
-      onActivateRequested: root.settingsOpen ? root.activateSetting(root.settingsCursor) : root.openDayCard()
-      onCloseRequested: root.settingsOpen ? root.settingsOpen = false : root.close()
-      onTabRequested: function(direction) { root.switchPanel(direction) }
-      onTextKey: function(text) {
-        if (root.settingsOpen) return
-        var t = Model.latinKey(text)
-        if (t === "s" || t === "S") { root.openSettings(); return }
-        if (t >= "1" && t <= "5") { root.setView(Model.VIEWS[Number(t) - 1]); root.setLayout(true) }
-        else if (t === "[") root.step(-1)
-        else if (t === "]") root.step(1)
-        else if (t === "{") root.moveYear(-1)
-        else if (t === "}") root.moveYear(1)
-        else if (t === "t" || t === "T") root.goToToday()
-        else if (t === "w" || t === "W") root.toggleWeekStart()
+      focus: true
+      Keys.onPressed: function(event) {
+        if (root.editingLife || root.cardOpen || (root.formatDropdown !== null && root.formatDropdown.popupOpen)) return
+        var keys = root.settingsOpen ? Model.SETTINGS_KEYS : Model.PANEL_KEYS
+        var a = keys[Model.chord(event.key, event.nativeScanCode, event.modifiers)]
+        if (!a) return
+        event.accepted = true
+        root.runKey(a)
       }
 
       ModernLayout {
@@ -920,7 +928,7 @@ Panel {
                 verticalPadding: Style.space(2)
                 width: Math.max(implicitWidth, implicitHeight)   // square, like an icon button
                 height: width
-                tooltipText: root.tr("Expand")
+                tooltipText: root.tr("Expand") + " (1–5)"
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
                 onClicked: root.setLayout(true)
@@ -934,7 +942,7 @@ Panel {
                 verticalPadding: Style.space(2)
                 width: Math.max(implicitWidth, implicitHeight)   // square, like an icon button
                 height: width
-                tooltipText: root.tr(syncProc.running ? "Syncing…" : "Sync now")
+                tooltipText: root.tr(syncProc.running ? "Syncing…" : "Sync now") + " (Ctrl+R)"
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
                 iconSpinning: syncProc.running
@@ -949,7 +957,7 @@ Panel {
                 verticalPadding: Style.space(2)
                 width: Math.max(implicitWidth, implicitHeight)   // square, like an icon button
                 height: width
-                tooltipText: root.tr("Settings") + " (S)"
+                tooltipText: root.tr("Settings") + " (Ctrl+,)"
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
                 onClicked: root.openSettings()
@@ -1165,7 +1173,7 @@ Panel {
             foreground: root.contentForeground
             fontFamily: root.contentFontFamily
             onClose: root.closeCard()
-            onNext: root.nextCard()
+            onStep: function(delta) { root.stepCard(delta) }
             onOpenLink: function(url) { root.openUrl(url) }
             onRespond: function(answer) { root.respondFromCard(answer) }
           }
