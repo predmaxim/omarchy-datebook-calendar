@@ -430,6 +430,7 @@ Item {
       days: layout.p ? Model.viewDays(layout.p.viewMode, layout.p.selectedKey, layout.p.weekStart) : []
       byDay: layout.p ? layout.p.eventIndex.byDay : ({})
       todayKey: layout.p ? layout.p.todayKey : ""
+      selectedKey: layout.p ? layout.p.selectedKey : ""
       use24h: layout.p ? layout.p.use24h : false
       cursorEvent: layout.p ? layout.p.cursorEvent : null
       foreground: layout.fg

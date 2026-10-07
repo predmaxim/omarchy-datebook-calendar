@@ -609,6 +609,12 @@ function isPast(row, nowMs) {
   return new Date(row.end).getTime() <= nowMs
 }
 
+// The same event row, whichever copy: a Repeater's modelData is a copy of
+// the array's object, so === never matches it.
+function sameEvent(a, b) {
+  return !!a && !!b && a.uid === b.uid && a.start === b.start
+}
+
 // The card Enter opens on a day: the first timed event not over yet (on
 // today, the meeting on now or next), else the day's first; -1 with none.
 function cardStart(rows, nowMs) {
