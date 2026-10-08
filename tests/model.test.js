@@ -141,6 +141,7 @@ const allDayIdx = M.indexEvents({ calendars: [{ account: "a", id: "c", shown: tr
   events: [{ uid: "a/c/1", account: "a", calendar: "c", title: "T", allDay: true, start: "2026-10-05", end: "2026-10-06", status: "confirmed", description: "D" }] }, true, ru)
 eq([allDayIdx.byDay["2026-10-05"][0].label, allDayIdx.byDay["2026-10-05"][0].allDay], ["Весь день", true], "indexEvents: ru all-day stays all-day")
 eq(allDayIdx.byDay["2026-10-05"][0].description, "D", "indexEvents: description reaches the card")
+eq(allDayIdx.byDay["2026-10-05"][0].day, "2026-10-05", "indexEvents: a row knows its day (the card steps through it)")
 eq(M.english("+%1 more", 3), "+3 more", "english: fills args")
 
 // The event card.
