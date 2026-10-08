@@ -276,15 +276,12 @@ Panel {
     return root.selectedEvents.findIndex(function(r) { return Model.sameEvent(r, ev) })
   }
 
-  // ↑/↓ and Enter in the card: the previous or next event, on to other
-  // days (the selected day follows, and the events' cursor with it); going
-  // on past the last one closes the card.
+  // ↑/↓ and Enter in the card: the day's previous or next event; going on
+  // past the last one closes the card.
   function stepCard(delta) {
-    var next = Model.stepEvent(root.eventIndex.byDay, root.cardEvent, delta)
-    var inEvents = root.cursorIndex >= 0
-    if (!next) { if (delta > 0) root.closeCard(); return }
-    root.openCard(next)
-    if (inEvents) root.cursorIndex = root.rowIndex(next)
+    var rows = root.selectedEvents, i = root.rowIndex(root.cardEvent)
+    if (i >= 0 && rows[i + delta]) root.cardEvent = rows[i + delta]
+    else if (delta > 0) root.closeCard()
   }
 
   // One action from a key map (Model.PANEL_KEYS, Model.EVENTS_KEYS, Model.SETTINGS_KEYS).

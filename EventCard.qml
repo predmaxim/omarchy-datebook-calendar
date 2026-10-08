@@ -17,7 +17,7 @@ Item {
   property var labelLocale: Qt.locale("en_US")   // the format locale
 
   signal close()
-  signal step(int delta)                         // ↑/↓, Enter: the previous or next event, any day
+  signal step(int delta)                         // ↑/↓, Enter: the day's previous or next event
   signal openLink(string url)
   signal respond(string answer)
 

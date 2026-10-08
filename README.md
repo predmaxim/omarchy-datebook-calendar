@@ -85,7 +85,7 @@ In the event card:
 
 | | |
 |---|---|
-| ↑/↓, Enter | the previous / next event, on to other days (the selected day follows); past the last one the card closes |
+| ↑/↓, Enter | the day's previous / next event; Enter past the last one closes the card |
 | Ctrl+Enter | join the meeting |
 | Alt+Enter | open the event on the web |
 | Ctrl+1 / Ctrl+2 / Ctrl+3 | accept / maybe / decline an invitation |
