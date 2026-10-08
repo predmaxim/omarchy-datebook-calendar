@@ -17,25 +17,48 @@ Item {
   property var labelLocale: Qt.locale("en_US")   // the format locale
 
   signal close()
-  signal step(int delta)                         // ↑/↓, Enter: the day's previous or next event
   signal openLink(string url)
   signal respond(string answer)
 
   readonly property bool hasWeb: !!event && /^https:\/\//.test(String(event.webLink || ""))
   readonly property bool hasJoin: !!event && !!event.join && /^https:\/\//.test(String(event.join.url || ""))
+  // The description as the web app shows it; LOCATION may hold a stale link.
+  readonly property string description: event ? String(event.description || event.location || "") : ""
+
+  // The keyboard cursor (Model.cardMove): the description's links, then the
+  // buttons in their order; -1 until an arrow is pressed.
+  readonly property var urls: Model.linksIn(description)
+  readonly property var buttons: [Model.isInvitation(event) ? "answer" : "", hasJoin ? "join" : "", hasWeb ? "web" : "", "close"]
+                                 .filter(function(b) { return b })
+  property int cursor: -1
+  readonly property string cursorAt: cursor < 0 ? "" : cursor < urls.length ? "link" : buttons[cursor - urls.length] || ""
 
   implicitHeight: body.implicitHeight
 
-  onEventChanged: if (event) Qt.callLater(function() { body.forceActiveFocus() })
+  onEventChanged: {
+    cursor = -1
+    if (event) Qt.callLater(function() { body.forceActiveFocus() })
+  }
 
-  // A line of the card: plain text, with its https links clickable.
+  // Enter: what the cursor is on, as a click would.
+  function press() {
+    if (cursorAt === "link") openLink(urls[cursor])
+    else if (cursorAt === "answer") { if (!busy) answer.openWithKeys() }
+    else if (cursorAt === "join") openLink(event.join.url)
+    else if (cursorAt === "web") openLink(event.webLink)
+    else if (cursorAt === "close") close()
+  }
+
+  // A line of the card: plain text, with its https links clickable. RichText,
+  // as StyledText can't fill the link under the cursor; it takes link colours inline.
   component Line: Text {
     property string plain: ""
+    property int current: -1                     // the link under the keyboard cursor
     width: parent.width
     wrapMode: Text.WordWrap
-    textFormat: Text.StyledText
-    text: Model.linkify(plain)
-    linkColor: Color.accent
+    textFormat: Text.RichText
+    text: Model.linkify(plain, { color: String(Color.accent), current: current,
+                                 fill: String(Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.3)) })
     color: card.foreground
     font.family: card.fontFamily
     font.pixelSize: Style.font.body
@@ -56,7 +79,8 @@ Item {
       if (!a) return
       event.accepted = true
       if (a[0] === "close") card.close()
-      else if (a[0] === "step") card.step(a[1])
+      else if (a[0] === "move") card.cursor = Model.cardMove(card.urls.length, card.urls.length + card.buttons.length, card.cursor, a[1])
+      else if (a[0] === "press") card.press()
       else if (a[0] === "join") { if (card.hasJoin) card.openLink(card.event.join.url) }
       else if (a[0] === "web") { if (card.hasWeb) card.openLink(card.event.webLink) }
       else if (a[0] === "answer") { if (Model.isInvitation(card.event) && !card.busy) card.respond(a[1]) }
@@ -87,8 +111,8 @@ Item {
 
     Line {
       visible: plain !== ""
-      // The description as the web app shows it; LOCATION may hold a stale link.
-      plain: card.event ? String(card.event.description || card.event.location || "") : ""
+      plain: card.description
+      current: card.cursorAt === "link" ? card.cursor : -1
     }
 
     Line {
@@ -100,10 +124,10 @@ Item {
 
     Item {
       width: parent.width
-      height: Math.max(links.height, closeButton.height)
+      height: Math.max(buttonRow.height, closeButton.height)
 
       Row {
-        id: links
+        id: buttonRow
         anchors.left: parent.left
         spacing: Style.space(6)
 
@@ -114,11 +138,14 @@ Item {
           foreground: card.foreground
           fontFamily: card.fontFamily
           tr: card.tr
+          hasCursor: card.cursorAt === "answer"
           onRespond: function(a) { card.respond(a) }
+          onOpenChanged: if (!open) Qt.callLater(function() { body.forceActiveFocus() })   // the answers had the keys
         }
 
         Button {
           visible: card.hasJoin
+          hasCursor: card.cursorAt === "join"
           bordered: true
           iconText: "󰕧"
           text: card.tr("Join")
@@ -129,6 +156,7 @@ Item {
 
         Button {
           visible: card.hasWeb
+          hasCursor: card.cursorAt === "web"
           bordered: true
           iconText: "󰏌"
           text: card.tr("Open in Web")
@@ -141,6 +169,7 @@ Item {
       Button {
         id: closeButton
         anchors.right: parent.right
+        hasCursor: card.cursorAt === "close"
         text: card.tr("Close")
         foreground: card.foreground
         fontFamily: card.fontFamily

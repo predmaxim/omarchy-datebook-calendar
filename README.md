@@ -85,7 +85,9 @@ In the event card:
 
 | | |
 |---|---|
-| ↑/↓, Enter | the day's previous / next event; Enter past the last one closes the card |
+| ↑/↓ | the links in the description, then the row of buttons |
+| ←/→ | along the buttons: answer, Join, Open in Web, Close |
+| Enter | what the cursor is on; on the answer it opens the choices (↑/↓, Enter, Esc) |
 | Ctrl+Enter | join the meeting |
 | Alt+Enter | open the event on the web |
 | Ctrl+1 / Ctrl+2 / Ctrl+3 | accept / maybe / decline an invitation |
