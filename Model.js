@@ -422,7 +422,7 @@ function indexEvents(data, use24h, tr) {
       var day = days[n]
       if (!byDay[day.key]) byDay[day.key] = []
       byDay[day.key].push({
-        uid: e.uid, title: e.title, label: day.label, sort: day.sort,
+        uid: e.uid, title: e.title, label: day.label, sort: day.sort, day: day.key,
         color: cinfo.color, calendarName: cinfo.name, account: e.account,
         location: e.location || "", description: e.description || "", join: e.join || null, webLink: e.webLink || "",
         response: e.response, declined: e.response === "declined",

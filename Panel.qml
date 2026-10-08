@@ -255,8 +255,12 @@ Panel {
   property var cardEvent: null
   readonly property bool cardOpen: cardEvent !== null
 
+  // A click opens an event from any day on show; that day becomes the
+  // selected one, so ↑/↓ in the card step through its events.
   function openCard(ev) {
-    if (ev && ev.uid) root.cardEvent = ev
+    if (!ev || !ev.uid) return
+    if (ev.day && ev.day !== root.selectedKey) root.pickDay(ev.day)
+    root.cardEvent = ev
   }
 
   // The event Ctrl+Enter and Alt+Enter act on: the one under the cursor,
