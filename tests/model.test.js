@@ -4,7 +4,7 @@ const fs = require("fs")
 const path = require("path")
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8")
 const M = new Function(src + "; return { nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english," +
-  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify, answerLabel, isInvitation, boldTime, isPast, cardStart, chord, shiftKey, PANEL_KEYS, EVENTS_KEYS, CARD_KEYS, SETTINGS_KEYS, sameEvent, stepEvent }")()
+  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify, answerLabel, isInvitation, boldTime, isPast, cardStart, chord, shiftKey, PANEL_KEYS, EVENTS_KEYS, CARD_KEYS, SETTINGS_KEYS, sameEvent }")()
 const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "I18n.js"), "utf8").replace(/^\.pragma.*$/m, "")
 const I = new Function(i18nSrc + "; return { translator, textLanguage, formatLocaleName, TABLES }")()
 
@@ -63,15 +63,6 @@ eq(M.boldTime("a<b & c"), "a&lt;b &amp; c", "boldTime: no time, markup escaped")
 // The same event in another copy (a Repeater's modelData is one): by uid and start.
 eq([M.sameEvent({ uid: "a", start: "1" }, { uid: "a", start: "1" }), M.sameEvent({ uid: "a", start: "1" }, { uid: "a", start: "2" }),
     M.sameEvent({ uid: "a", start: "1" }, null), M.sameEvent(null, null)], [true, false, false, false], "sameEvent: uid and start, null never")
-const sb = { "2026-10-07": [{ uid: "a", start: "1", day: "2026-10-07" }, { uid: "b", start: "2", day: "2026-10-07" }],
-             "2026-10-08": [{ uid: "c", start: "3", day: "2026-10-08" }, { uid: "d", start: "4", day: "2026-10-08" }],
-             "2026-10-09": [], "2026-10-12": [{ uid: "e", start: "5", day: "2026-10-12" }] }
-eq(M.stepEvent(sb, sb["2026-10-08"][0], 1).uid, "d", "stepEvent: next in the day")
-eq(M.stepEvent(sb, sb["2026-10-08"][1], 1).uid, "e", "stepEvent: on to the next day with events")
-eq(M.stepEvent(sb, sb["2026-10-08"][0], -1).uid, "b", "stepEvent: back to the previous day's last")
-eq(M.stepEvent(sb, { uid: "d", start: "4", day: "2026-10-08" }, 1).uid, "e", "stepEvent: a copy of the row works")
-eq([M.stepEvent(sb, sb["2026-10-12"][0], 1), M.stepEvent(sb, sb["2026-10-07"][0], -1)], [null, null], "stepEvent: none past the ends")
-eq(M.stepEvent(sb, { uid: "x", start: "9", day: "2026-10-08" }, 1), null, "stepEvent: an event gone after a sync")
 
 // The selected day moved by a day, week, month or year.
 eq([M.shiftKey("2026-12-31", "day", 1), M.shiftKey("2026-10-08", "week", -1), M.shiftKey("2026-01-31", "month", 1),

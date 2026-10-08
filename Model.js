@@ -615,22 +615,6 @@ function sameEvent(a, b) {
   return !!a && !!b && a.uid === b.uid && a.start === b.start
 }
 
-// The event before or after a row in the card, on to other days with
-// events (keys sort as dates); null past either end or for a row gone after
-// a sync.
-function stepEvent(byDay, row, delta) {
-  var rows = (row && byDay[row.day]) || []
-  var i = rows.findIndex(function(r) { return sameEvent(r, row) })
-  if (i < 0) return null
-  if (rows[i + delta]) return rows[i + delta]
-  var keys = Object.keys(byDay).sort()
-  for (var k = keys.indexOf(row.day) + delta; k >= 0 && k < keys.length; k += delta) {
-    var day = byDay[keys[k]]
-    if (day.length) return day[delta > 0 ? 0 : day.length - 1]
-  }
-  return null
-}
-
 // The card Enter opens on a day: the first timed event not over yet (on
 // today, the meeting on now or next), else the day's first; -1 with none.
 function cardStart(rows, nowMs) {
