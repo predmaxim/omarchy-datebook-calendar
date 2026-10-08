@@ -4,7 +4,7 @@ const fs = require("fs")
 const path = require("path")
 const src = fs.readFileSync(path.join(__dirname, "..", "Model.js"), "utf8")
 const M = new Function(src + "; return { nextUp, dueSnoozes, reminderText, keyForDate, addDays, dueReminders, english," +
-  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify, answerLabel, isInvitation, boldTime, isPast, cardStart, chord, shiftKey, PANEL_KEYS, EVENTS_KEYS, CARD_KEYS, SETTINGS_KEYS, sameEvent }")()
+  " rangeTitle, shortDay, indexEvents, namedFormat, openCommand, capitalize, dateLabel, cardWhen, responseText, cardCalendar, linkify, answerLabel, isInvitation, boldTime, isPast, cardStart, chord, shiftKey, PANEL_KEYS, EVENTS_KEYS, CARD_KEYS, SETTINGS_KEYS, sameEvent, linksIn, cardMove }")()
 const i18nSrc = fs.readFileSync(path.join(__dirname, "..", "I18n.js"), "utf8").replace(/^\.pragma.*$/m, "")
 const I = new Function(i18nSrc + "; return { translator, textLanguage, formatLocaleName, TABLES }")()
 
@@ -163,6 +163,16 @@ eq(M.linkify("Zoom: https://zoom.us/j/1?pwd=a&b=2, room <5>"),
 eq(M.linkify("http://x.ru and javascript:alert(1) and \"https://a.ru/x\"."),
    'http://x.ru and javascript:alert(1) and &quot;<a href="https://a.ru/x">https://a.ru/x</a>&quot;.', "linkify: only https, quotes and dot outside")
 eq(M.linkify("a\nb"), "a<br>b", "linkify: line breaks kept")
+eq(M.linksIn("see https://a.ru/x, and https://b.ru."), ["https://a.ru/x", "https://b.ru"], "linksIn: in order, punctuation left out")
+eq(M.linkify("https://a.ru https://b.ru", { color: "#5ad", current: 1, fill: "#4d5ad000" }),
+   '<a href="https://a.ru" style="color:#5ad">https://a.ru</a> <a href="https://b.ru" style="color:#5ad;background-color:#4d5ad000">https://b.ru</a>',
+   "linkify: rich text colours, the current link filled")
+// The card's cursor: 2 links, then 3 buttons (indexes 2..4).
+eq([-1, 0, 1, 2, 4].map(c => M.cardMove(2, 5, c, "down")), [0, 1, 2, 2, 4], "cardMove: down the links onto the buttons, stays there")
+eq([-1, 0, 1, 2, 4].map(c => M.cardMove(2, 5, c, "up")), [2, 0, 0, 1, 1], "cardMove: up from the buttons to the last link")
+eq([-1, 0, 2, 3, 4].map(c => M.cardMove(2, 5, c, "right")), [2, 0, 3, 4, 4], "cardMove: right along the buttons only")
+eq([-1, 1, 2, 3].map(c => M.cardMove(2, 5, c, "left")), [2, 1, 2, 2], "cardMove: left along the buttons only")
+eq([-1, 0].map(c => M.cardMove(0, 1, c, "down")).concat([M.cardMove(0, 1, 0, "up")]), [0, 0, 0], "cardMove: no links, just Close")
 eq(M.linkify(""), "", "linkify: empty")
 eq(["accepted", "tentative", "declined", "needsAction"].map(r => M.answerLabel({ response: r }, en)),
    ["Accepted", "Maybe", "Declined", "Choose"], "answerLabel: the answer made, else Choose")

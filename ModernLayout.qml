@@ -503,7 +503,6 @@ Item {
         foreground: layout.fg
         fontFamily: layout.fontName
         onClose: layout.p.closeCard()
-        onStep: function(delta) { layout.p.stepCard(delta) }
         onOpenLink: function(url) { layout.p.openUrl(url) }
         onRespond: function(answer) { layout.p.respondFromCard(answer) }
       }

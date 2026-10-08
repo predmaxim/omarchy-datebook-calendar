@@ -655,7 +655,7 @@ var PANEL_KEYS = {
 // and a key that moves the day leaves the events.
 var EVENTS_KEYS = { "Up": ["event", -1], "Down": ["event", 1], "Enter": ["card"], "Esc": ["leave"] }
 var CARD_KEYS = {
-  "Up": ["step", -1], "Down": ["step", 1], "Enter": ["step", 1],
+  "Up": ["move", "up"], "Down": ["move", "down"], "Left": ["move", "left"], "Right": ["move", "right"], "Enter": ["press"],
   "Ctrl+Enter": ["join"], "Alt+Enter": ["web"],
   "Ctrl+1": ["answer", "accept"], "Ctrl+2": ["answer", "tentative"], "Ctrl+3": ["answer", "decline"],
   "Esc": ["close"]
@@ -791,22 +791,46 @@ function cardWhen(row, use24h, tr, locale) {
   return dateLabel(s, locale) + " " + clockLabel(s, use24h) + " – " + dateLabel(e, locale) + " " + clockLabel(e, use24h)
 }
 
-// Text as StyledText with its https links clickable; everything else
-// escaped, so text from an invitation can't bring markup of its own.
-// Punctuation that ends a sentence stays outside the link.
-function linkify(text) {
-  var esc = function (s) {
-    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/\n/g, "<br>")
-  }
-  var out = "", last = 0, re = /https:\/\/[^\s<>"]+/g, m
+// The https links in a text, in order. Punctuation that ends a sentence
+// stays outside the link.
+function linksIn(text) {
+  var out = [], re = /https:\/\/[^\s<>"]+/g, m
   var str = String(text || "")
   while ((m = re.exec(str)) !== null) {
     var url = m[0].replace(/[.,;:!?)\]]+$/, "")
-    out += esc(str.slice(last, m.index)) + '<a href="' + esc(url) + '">' + esc(url) + "</a>"
-    last = m.index + url.length
-    re.lastIndex = last
+    out.push(url)
+    re.lastIndex = m.index + url.length
+  }
+  return out
+}
+
+// Text as StyledText with its https links clickable; everything else
+// escaped, so text from an invitation can't bring markup of its own. With
+// opts it is for RichText, which takes link colours inline: {color, and the
+// link under the keyboard cursor, current, filled with fill}.
+function linkify(text, opts) {
+  var esc = function (s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/\n/g, "<br>")
+  }
+  var str = String(text || ""), links = linksIn(str), out = "", last = 0
+  for (var i = 0; i < links.length; i++) {
+    var at = str.indexOf(links[i], last)
+    var style = opts ? ' style="color:' + opts.color + (i === opts.current ? ";background-color:" + opts.fill : "") + '"' : ""
+    out += esc(str.slice(last, at)) + '<a href="' + esc(links[i]) + '"' + style + ">" + esc(links[i]) + "</a>"
+    last = at + links[i].length
   }
   return out + esc(str.slice(last))
+}
+
+// The card's keyboard cursor after an arrow: its links first, a row each,
+// then one row of buttons, ←/→ along it. -1 is nowhere yet: ↓ starts at the
+// top, ↑, ← and → on the buttons.
+function cardMove(links, count, cursor, dir) {
+  var onButtons = cursor >= links
+  if (dir === "down") return cursor < links - 1 ? cursor + 1 : onButtons ? cursor : links
+  if (dir === "up") return cursor < 0 ? links : onButtons ? (links > 0 ? links - 1 : cursor) : Math.max(0, cursor - 1)
+  if (!onButtons) return cursor < 0 ? links : cursor
+  return Math.max(links, Math.min(count - 1, cursor + (dir === "right" ? 1 : -1)))
 }
 
 // Which calendar, whether it repeats, and where else the same event is.

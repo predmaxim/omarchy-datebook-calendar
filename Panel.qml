@@ -268,18 +268,6 @@ Panel {
     if (ev) root.openUrl(kind === "join" ? (ev.join ? ev.join.url : "") : ev.webLink)
   }
 
-  function rowIndex(ev) {
-    return root.selectedEvents.findIndex(function(r) { return Model.sameEvent(r, ev) })
-  }
-
-  // ↑/↓ and Enter in the card: the day's previous or next event; going on
-  // past the last one closes the card.
-  function stepCard(delta) {
-    var rows = root.selectedEvents, i = root.rowIndex(root.cardEvent)
-    if (i >= 0 && rows[i + delta]) root.cardEvent = rows[i + delta]
-    else if (delta > 0) root.closeCard()
-  }
-
   // One action from a key map (Model.PANEL_KEYS, Model.EVENTS_KEYS, Model.SETTINGS_KEYS).
   function runKey(a) {
     var what = a[0]
@@ -301,10 +289,8 @@ Panel {
     else if (what === "back") root.settingsOpen = false
   }
 
-  // A card opened from the events leaves the cursor on the event it ended
-  // on, so ↑/↓ carry on from there.
+  // A card opened from the events leaves their cursor where it was.
   function closeCard() {
-    if (root.cursorIndex >= 0 && root.cardEvent) root.cursorIndex = Math.max(0, root.rowIndex(root.cardEvent))
     root.cardEvent = null
     Qt.callLater(function() { if (keyCatcher) keyCatcher.forceActiveFocus() })
   }
@@ -1199,7 +1185,6 @@ Panel {
             foreground: root.contentForeground
             fontFamily: root.contentFontFamily
             onClose: root.closeCard()
-            onStep: function(delta) { root.stepCard(delta) }
             onOpenLink: function(url) { root.openUrl(url) }
             onRespond: function(answer) { root.respondFromCard(answer) }
           }
