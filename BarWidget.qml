@@ -190,8 +190,6 @@ BarWidget {
     Rectangle {
       visible: root.alert !== ""
       anchors.fill: parent
-      anchors.leftMargin: Style.space(3)
-      anchors.rightMargin: Style.space(3)
       anchors.topMargin: Style.space(4)
       anchors.bottomMargin: Style.space(4)
       radius: Style.space(4)
