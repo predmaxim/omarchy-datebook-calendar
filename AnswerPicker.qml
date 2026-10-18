@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Window
 import QtQuick.Controls as QC
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 
@@ -13,7 +14,7 @@ Item {
 
   property var event: null                       // a row from Model.indexEvents
   property bool busy: false                      // an answer is being sent
-  property color foreground: Color.foreground
+  property color foreground: Commons.Color.foreground
   property string fontFamily: Style.font.family
   property var tr: Model.english
   property bool open: false
@@ -52,7 +53,7 @@ Item {
     hasCursor: picker.hasCursor
     iconText: "󰅀"
     text: picker.event ? Model.answerLabel(picker.event, picker.tr) : ""
-    foreground: picker.event && picker.event.response !== "needsAction" ? Color.accent : picker.foreground
+    foreground: picker.event && picker.event.response !== "needsAction" ? Commons.Color.accent : picker.foreground
     fontFamily: picker.fontFamily
     onClicked: {
       picker.choice = -1
@@ -80,9 +81,9 @@ Item {
 
     background: Rectangle {
       radius: Style.cornerRadius
-      color: Color.popups.background
+      color: Commons.Color.popups.background
       border.width: Style.spacing.hairline
-      border.color: Color.popups.border
+      border.color: Commons.Color.popups.border
     }
 
     // ↑/↓ and Enter; Esc closes (closePolicy).
@@ -112,7 +113,7 @@ Item {
           tooltipText: current ? picker.tr("Your answer now")
                                : (picker.event && picker.event.recurring ? picker.tr("Every occurrence: ") : "")
                                  + picker.tr("%1 and let the organiser know", modelData.label)
-          foreground: current ? Color.accent : picker.foreground
+          foreground: current ? Commons.Color.accent : picker.foreground
           fontFamily: picker.fontFamily
           onClicked: picker.pick(modelData.answer)
         }
