@@ -193,7 +193,7 @@ BarWidget {
       anchors.topMargin: Style.space(4)
       anchors.bottomMargin: Style.space(4)
       radius: Style.space(4)
-      color: root.alert === "now" ? "#c0392b" : "#c9a000"
+      color: root.alert === "now" ? "#c0392b" : "#b38e00"
     }
 
     Text {
