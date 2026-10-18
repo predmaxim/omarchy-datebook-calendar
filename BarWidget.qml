@@ -33,6 +33,9 @@ BarWidget {
   readonly property var labelLocale: Qt.locale(I18n.formatLocaleName(function(name) { return Quickshell.env(name) }))
   readonly property string displayText: formatted(displayDate)
   readonly property var verticalLines: displayText.split("\n")
+  // Yellow 15 minutes before a meeting, red while it runs (Panel.barAlert).
+  readonly property string alert: panelLoader.item ? panelLoader.item.barAlert || "" : ""
+  readonly property color labelColor: alert ? "#ffffff" : button.foreground
 
   function refresh() {
     displayDate = new Date()
@@ -184,13 +187,24 @@ BarWidget {
     // Clock format and time zone live in the panel's ⋮ menu.
     onPressed: function(b) { if (b !== Qt.MiddleButton) root.togglePanel() }
 
+    Rectangle {
+      visible: root.alert !== ""
+      anchors.fill: parent
+      anchors.leftMargin: Style.space(3)
+      anchors.rightMargin: Style.space(3)
+      anchors.topMargin: Style.space(4)
+      anchors.bottomMargin: Style.space(4)
+      radius: Style.space(4)
+      color: root.alert === "now" ? "#c0392b" : "#c9a000"
+    }
+
     Text {
       id: boldLabel
       visible: !root.vertical
       anchors.centerIn: parent
       textFormat: Text.StyledText
       text: Model.boldTime(root.displayText)
-      color: button.foreground
+      color: root.labelColor
       font.family: button.fontFamily
       font.pixelSize: button.fontSize
       renderType: Text.NativeRendering
@@ -212,7 +226,7 @@ BarWidget {
           fontSize: modelData.length > 3
             ? button.fontSize * 0.9
             : button.fontSize
-          color: button.foreground
+          color: root.labelColor
         }
       }
     }

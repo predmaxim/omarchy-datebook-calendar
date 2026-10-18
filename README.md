@@ -4,7 +4,8 @@ Based on [Datebook](https://github.com/jonspinks/omarchy-calendar).
 
 A calendar in Omarchy's top bar for looking, not editing. Click the date and
 you see today's meetings with a Join button for each. Expand it for a week,
-month or year of Yandex, Google and any CalDAV calendars.
+month or year of Yandex, Google and any CalDAV calendars. The date on the
+bar turns yellow 15 minutes before a meeting and red while it runs.
 
 ![Compact view: the month and today's meetings](screenshots/compact.png)
 

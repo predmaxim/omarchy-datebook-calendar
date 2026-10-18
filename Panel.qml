@@ -364,6 +364,11 @@ Panel {
   readonly property int snoozeMinutes: 5
   property date clockNow: new Date()
 
+  // The bar label's alert: "now" while a meeting runs, "soon" 15 minutes
+  // before it starts (Model.nextUp), "" otherwise.
+  readonly property var barNext: Model.nextUp(root.eventIndex.byDay, root.clockNow, root.use24h, root.tr)
+  readonly property string barAlert: !barNext ? "" : barNext.live ? "now" : barNext.soon ? "soon" : ""
+
   function checkReminders() {
     if (!root.remindersOn || !root.eventData || !root.firedLoaded) return
     var now = Date.now()
