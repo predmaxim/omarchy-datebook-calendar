@@ -188,6 +188,9 @@ eq(M.namedFormat("d MMM, ddd HH:mm", "понедельник", "пн", "сент
 eq(M.namedFormat("dddd HH:mm", "понедельник", "пн", "сент."), "'Понедельник' HH:mm", "namedFormat: ru long day")
 eq(M.namedFormat("d MMMM 'W'ww yyyy", "Monday", "Mon", "Sep"), "d MMMM 'W'ww yyyy", "namedFormat: long month left to the locale")
 eq(M.namedFormat("ddd d MMM", "Monday", "Mon", "Sep"), "'Mon' d 'Sep'", "namedFormat: English unchanged in effect")
+eq(M.namedFormat("MMMM, HH:mm", "четверг", "чт", "нояб.", "ноября", "ноябрь"), "'Ноябрь', HH:mm", "namedFormat: month alone is stand-alone, capitalised")
+eq(M.namedFormat("d MMMM, HH:mm", "четверг", "чт", "нояб.", "ноября", "ноябрь"), "d 'Ноября', HH:mm", "namedFormat: month with a day is in the date case, capitalised")
+eq(M.namedFormat("dddd, d MMMM", "Wednesday", "Wed", "Nov", "November", "November"), "'Wednesday', d 'November'", "namedFormat: a weekday name is not a day number")
 // Telemost meetings open in the Telemost web app; everything else in the browser.
 eq(M.openCommand("https://telemost.yandex.ru/j/12345678901234"),
    ["omarchy-launch-webapp", "https://telemost.yandex.ru/j/12345678901234?skip_app=1"], "openCommand: Telemost, without the desktop app prompt")

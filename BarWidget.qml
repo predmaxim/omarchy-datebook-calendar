@@ -19,7 +19,7 @@ BarWidget {
 
   readonly property string configuredFormat: vertical
     ? setting("verticalFormat", "HH\n—\nmm")
-    : setting("format", "dddd HH:mm")
+    : setting("format", "dddd, HH:mm")
   readonly property string configuredAltFormat: vertical
     ? setting("verticalFormatAlt", "dd\nMMM\n'W'ww\n''yy")
     : setting("formatAlt", "d MMMM 'W'ww yyyy")
@@ -64,7 +64,8 @@ BarWidget {
     var format = Model.namedFormat(
       (fmt === undefined ? activeFormat : fmt).replace(/ww/g, Model.isoWeekLiteral(date.getFullYear(), date.getMonth(), date.getDate())),
       loc.dayName(date.getDay(), Locale.LongFormat), loc.dayName(date.getDay(), Locale.ShortFormat),
-      loc.monthName(date.getMonth(), Locale.ShortFormat))
+      loc.monthName(date.getMonth(), Locale.ShortFormat),
+      loc.monthName(date.getMonth(), Locale.LongFormat), loc.standaloneMonthName(date.getMonth(), Locale.LongFormat))
     var text = date.toLocaleString(loc, format)
     return text.charAt(0).toUpperCase() + text.slice(1)
   }

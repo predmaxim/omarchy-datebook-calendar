@@ -20,11 +20,16 @@ function capitalize(text) {
 
 // The bar label's day and month names, put in as literals so they read right
 // in any language: day names capitalised (Russian writes them lower-case) and
-// month abbreviations capitalised, without their trailing dot ("сент." reads "Сент"). Long
-// month names stay with the locale, which knows their grammatical case.
-function namedFormat(format, dayLong, dayShort, monthShort) {
+// month abbreviations capitalised, without their trailing dot ("сент." reads "Сент").
+// A long month name, when given, is capitalised too, in the case the format
+// needs: with a day number the locale's date form ("5 Ноября"), without one
+// the stand-alone form ("Ноябрь"). Without the names MMMM stays with the locale.
+function namedFormat(format, dayLong, dayShort, monthShort, monthLong, monthStandalone) {
   var cap = function (s) { return s.charAt(0).toUpperCase() + s.slice(1) }
   var lit = function (s) { return "'" + s.replace(/'/g, "''") + "'" }
+  var withDay = /d/.test(format.replace(/'[^']*'/g, "").replace(/dddd|ddd/g, ""))
+  var long = withDay ? monthLong : monthStandalone
+  if (long) format = format.replace(/MMMM/g, lit(cap(String(long))))
   return format.replace(/dddd/g, lit(cap(dayLong)))
                .replace(/ddd/g, lit(cap(dayShort)))
                .replace(/(^|[^M])MMM(?!M)/g, function (m, pre) { return pre + lit(cap(monthShort.replace(/\.$/, ""))) })
@@ -71,12 +76,14 @@ function shortMonth(month, locale) { return String(names(locale).monthName(month
 // without one: ISO 8601 writes time on a 24-hour clock, so an AM/PM variant
 // would contradict the only thing that format is for.
 var CLOCK_FORMATS = [
-  "dddd HH:mm",
-  "dddd h:mm AP",
+  "dddd, HH:mm",
+  "dddd, h:mm AP",
   "HH:mm",
   "h:mm AP",
   "ddd d MMM HH:mm",
   "ddd d MMM h:mm AP",
+  "d MMMM, HH:mm",
+  "MMMM, HH:mm",
   "d MMMM 'W'ww yyyy",
   "yyyy-MM-dd HH:mm"
 ]
