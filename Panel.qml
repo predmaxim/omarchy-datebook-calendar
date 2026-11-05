@@ -17,6 +17,8 @@ import "I18n.js" as I18n
 // anchor against.
 Panel {
   id: root
+  // Fixed status colours (FixedColors.qml): a theme's red can be any colour.
+  readonly property QtObject fixedColors: FixedColors {}
   moduleName: "predmaxim.datebook"
   ipcTarget: "predmaxim.datebook"
   manageIpc: false
@@ -1667,7 +1669,7 @@ Panel {
                   text: modelData.name + ": " + (modelData.status === "signin"
                     ? root.tr("sign-in needed (calendar-ctl add-%1 %2 …)", ({google: "google", caldav: "yandex"}[modelData.provider] || "yandex"), modelData.name)
                     : modelData.status === "offline" ? root.tr("offline, showing the last copy") : root.tr("couldn't sync"))
-                  color: Color.urgent
+                  color: fixedColors.red
                   font.family: root.contentFontFamily
                   font.pixelSize: Style.font.bodySmall
                 }

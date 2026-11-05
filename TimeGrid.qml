@@ -11,6 +11,8 @@ import "Model.js" as Model
 // and today carries a line at the current time.
 Item {
   id: grid
+  // Fixed status colours (FixedColors.qml): a theme's red can be any colour.
+  readonly property QtObject fixedColors: FixedColors {}
 
   property var days: []            // day keys, left to right
   property var byDay: ({})
@@ -359,7 +361,7 @@ Item {
         y: (minutes - grid.hours.first * 60) / 60 * grid.hourHeight
         width: grid.colWidth
         height: Style.space(2)
-        color: Color.urgent
+        color: fixedColors.red
       }
     }
   }

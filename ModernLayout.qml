@@ -12,6 +12,8 @@ import "Model.js" as Model
 // this one stay interchangeable.
 Item {
   id: layout
+  // Fixed status colours (FixedColors.qml): a theme's red can be any colour.
+  readonly property QtObject fixedColors: FixedColors {}
 
   property var p: null
   property var tr: Model.english                 // I18n.translator from the panel
@@ -313,7 +315,7 @@ Item {
                 text: calRow.modelData.account + (calRow.account.status && calRow.account.status !== "ok"
                       ? "  ·  " + (calRow.account.status === "signin" ? layout.tr("sign-in needed")
                                    : calRow.account.status === "offline" ? layout.tr("offline") : layout.tr("couldn't sync")) : "")
-                color: calRow.account.status && calRow.account.status !== "ok" ? Color.urgent : Qt.darker(layout.fg, 1.25)
+                color: calRow.account.status && calRow.account.status !== "ok" ? fixedColors.red : Qt.darker(layout.fg, 1.25)
                 font.family: layout.fontName
                 font.pixelSize: Style.font.caption
                 font.bold: true

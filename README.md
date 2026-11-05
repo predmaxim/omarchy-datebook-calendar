@@ -134,6 +134,14 @@ rm -rf ~/.config/predmaxim.datebook ~/.cache/predmaxim.datebook
   `~/.cache/predmaxim.datebook/events.json`, which the QML widget reads.
   Tests: `tests/run.sh`.
 
+
+## Colours
+
+Status colours (red, orange) are fixed rather than the theme's, whose red or
+yellow can be any colour: `FixedColors.qml` reads them from
+`~/.config/omarchy/predmaxim/palette.json` (`{"red": "#e5534b", ...}`) and
+falls back to the theme's alert colour without that file.
+
 ## License
 
 MIT, see [LICENSE](LICENSE). Parts of the panel come from Omarchy's own clock.
