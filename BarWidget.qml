@@ -201,11 +201,12 @@ BarWidget {
       id: boldLabel
       visible: !root.vertical
       anchors.centerIn: parent
-      textFormat: Text.StyledText
-      text: Model.boldTime(root.displayText)
+      textFormat: Text.PlainText
+      text: root.displayText
       color: root.labelColor
       font.family: button.fontFamily
       font.pixelSize: button.fontSize
+      font.bold: true
       renderType: Text.NativeRendering
     }
 

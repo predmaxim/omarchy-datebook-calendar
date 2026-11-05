@@ -99,7 +99,7 @@ runs it by hand. Calendars are switched on and off in Settings (or `calendar-ctl
 hidden calendars aren't downloaded.
 
 Optional settings in the widget's entry in `shell.json`: `"format"` (the date
-on the bar; 12/24-hour carries into the calendar; right click on the bar walks
+on the bar, all of it bold; 12/24-hour carries into the calendar; right click on the bar walks
 the presets, among them "Thursday, 19:17", "5 November, 19:17" and
 "November, 19:17": a long month name is capitalised, in the date case with a
 day number, stand-alone without one), `"view"`,
