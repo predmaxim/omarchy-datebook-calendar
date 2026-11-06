@@ -907,11 +907,11 @@ Panel {
               anchors.right: heroButtons.left
               anchors.rightMargin: Style.space(12)
               anchors.verticalCenter: parent.verticalCenter
-              // The bar's own label, time in bold as on the bar.
-              textFormat: Text.StyledText
+              // The bar's own label.
+              textFormat: Text.PlainText
               elide: Text.ElideRight
               text: root.hostWidget && root.hostWidget.displayText
-                ? Model.boldTime(root.hostWidget.displayText)
+                ? root.hostWidget.displayText
                 : root.today.toLocaleDateString(root.labelLocale, root.labelLocale.name === "en_US" ? "MMMM d" : "d MMMM")
               color: hero.tint
               font.family: root.contentFontFamily

@@ -50,7 +50,6 @@ Item {
       color: layout.fg
       font.family: layout.fontName
       font.pixelSize: Style.font.subtitle * 1.25
-      font.bold: true
     }
 
     Row {

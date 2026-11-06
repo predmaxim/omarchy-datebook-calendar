@@ -128,12 +128,6 @@ function nextClockFormat(ring, current) {
 
 // Two-digit ISO week, substituted into a format's 'ww' token before Qt
 // formats it -- Qt has no ISO week specifier of its own.
-// The bar label as StyledText with only the time bold ("… Вт <b>09:44</b>").
-function boldTime(text) {
-  var escaped = String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-  return escaped.replace(/\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp]\.?[Mm]\.?)?/, "<b>$&</b>")
-}
-
 function isoWeekLiteral(year, month, day) {
   return pad2(isoWeek(year, month, day))
 }
@@ -893,7 +887,6 @@ if (typeof module !== "undefined") {
     clockFormatRing: clockFormatRing,
     nextClockFormat: nextClockFormat,
     isoWeekLiteral: isoWeekLiteral,
-    boldTime: boldTime,
     colorFor: colorFor,
     addDays: addDays,
     eventDays: eventDays,

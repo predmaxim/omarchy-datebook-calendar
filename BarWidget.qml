@@ -103,7 +103,7 @@ BarWidget {
   // dot takes the label width; vertically it is a stack of icon-sized lines,
   // so the dot takes one line — the same mark every icon widget gets, rather
   // than a rule running the height of the whole stack.
-  readonly property real openPanelIndicatorWidth: root.vertical ? 0 : boldLabel.implicitWidth
+  readonly property real openPanelIndicatorWidth: root.vertical ? 0 : label.implicitWidth
   readonly property real openPanelIndicatorHeight: Math.max(Style.space(10), Math.round(Style.bar.iconSlot * 0.55))
 
   // Forwarded so this widget can stand in for the panel as the bar's popout
@@ -178,8 +178,8 @@ BarWidget {
     bar: root.bar
     text: root.vertical ? "" : root.displayText
     labelVisible: false
-    // The label is drawn here, time in bold: WidgetButton's own has no weight.
-    fixedWidth: root.vertical ? -1 : boldLabel.implicitWidth + Style.spaceReal(horizontalMargin) * 2
+    // The label is drawn here, over the alert plate: WidgetButton's own would sit under it.
+    fixedWidth: root.vertical ? -1 : label.implicitWidth + Style.spaceReal(horizontalMargin) * 2
     hasVisualContent: root.vertical ? root.verticalLines.length > 0 : text !== ""
     fixedHeight: root.vertical ? root.verticalLines.length * Style.bar.iconSlot : -1
     horizontalMargin: 8.75
@@ -198,7 +198,7 @@ BarWidget {
     }
 
     Text {
-      id: boldLabel
+      id: label
       visible: !root.vertical
       anchors.centerIn: parent
       textFormat: Text.PlainText
@@ -206,7 +206,6 @@ BarWidget {
       color: root.labelColor
       font.family: button.fontFamily
       font.pixelSize: button.fontSize
-      font.bold: true
       renderType: Text.NativeRendering
     }
 
